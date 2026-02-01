@@ -531,32 +531,81 @@ button.ghost:hover { background:#667eea; color:white; }
 
 <script>
 // ════════════════════════════════════════════════════════════════════
-// SHARED PERSISTENT STORAGE – uses window.storage (built into Claude artifacts)
-// shared:true  → visible to every user of this artifact (users, groups)
-// shared:false → per-user device-local (session, game collections)
+// FIRESTORE REST – direct fetch() to Firestore, no SDK needed
 // ════════════════════════════════════════════════════════════════════
+const FS_PROJECT = "board-game-selector-b2ee8";
+const FS_API_KEY = "AIzaSyDppV8tjk6H0IaFKuxjbcRGj0kmDkWFnsY";
+const FS_BASE    = `https://firestore.googleapis.com/v1/projects/${FS_PROJECT}/databases/(default)/documents`;
 
-async function fsGetUser(username) {
-    try {
-        const result = await window.storage.get('users:' + username, true);
-        return result ? JSON.parse(result.value) : null;
-    } catch(e) { return null; }
+// ── Serialise a plain JS value → Firestore typed value ──
+function fsEncode(val) {
+    if (val === null || val === undefined) return { nullValue: null };
+    if (typeof val === 'boolean') return { booleanValue: val };
+    if (typeof val === 'number') return Number.isInteger(val) ? { integerValue: String(val) } : { doubleValue: val };
+    if (typeof val === 'string') return { stringValue: val };
+    if (Array.isArray(val)) return { arrayValue: { values: val.map(fsEncode) } };
+    if (val instanceof Date) return { timestampValue: val.toISOString() };
+    const fields = {};
+    for (const [k, v] of Object.entries(val)) fields[k] = fsEncode(v);
+    return { mapValue: { fields } };
 }
 
-async function fsSaveUser(userData) {
-    await window.storage.set('users:' + userData.username, JSON.stringify(userData), true);
+// ── Deserialise a Firestore typed value → plain JS value ──
+function fsDecode(typed) {
+    if (!typed) return null;
+    if ('nullValue'    in typed) return null;
+    if ('booleanValue' in typed) return typed.booleanValue;
+    if ('integerValue' in typed) return Number(typed.integerValue);
+    if ('doubleValue'  in typed) return typed.doubleValue;
+    if ('stringValue'  in typed) return typed.stringValue;
+    if ('timestampValue' in typed) return typed.timestampValue;
+    if ('arrayValue'   in typed) return (typed.arrayValue.values || []).map(fsDecode);
+    if ('mapValue'     in typed) {
+        const obj = {};
+        for (const [k, v] of Object.entries(typed.mapValue.fields || {})) obj[k] = fsDecode(v);
+        return obj;
+    }
+    return null;
 }
 
-async function fsGetGroup(code) {
-    try {
-        const result = await window.storage.get('groups:' + code, true);
-        return result ? JSON.parse(result.value) : null;
-    } catch(e) { return null; }
+// ── Core REST helpers ──
+async function fsRead(collection, docId) {
+    const url = `${FS_BASE}/${collection}/${docId}?key=${FS_API_KEY}`;
+    const res = await fetch(url);
+    if (res.status === 404) return null;
+    if (!res.ok) {
+        let detail = res.status;
+        try { detail = (await res.json()).error.message || detail; } catch(e) {}
+        throw new Error(`Firestore read failed (${res.status}): ${detail}`);
+    }
+    const body = await res.json();
+    if (!body.fields) return null;
+    const obj = {};
+    for (const [k, v] of Object.entries(body.fields)) obj[k] = fsDecode(v);
+    return obj;
 }
 
-async function fsSaveGroup(groupData) {
-    await window.storage.set('groups:' + groupData.code, JSON.stringify(groupData), true);
+async function fsWrite(collection, docId, data) {
+    const url = `${FS_BASE}/${collection}/${docId}?key=${FS_API_KEY}`;
+    const fields = {};
+    for (const [k, v] of Object.entries(data)) fields[k] = fsEncode(v);
+    const res = await fetch(url, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields })
+    });
+    if (!res.ok) {
+        let detail = res.status;
+        try { detail = (await res.json()).error.message || detail; } catch(e) {}
+        throw new Error(`Firestore write failed (${res.status}): ${detail}`);
+    }
 }
+
+// ── App-level helpers (same interface the rest of the code expects) ──
+async function fsGetUser(username)  { return fsRead('users', username); }
+async function fsSaveUser(userData) { await fsWrite('users', userData.username, userData); }
+async function fsGetGroup(code)     { return fsRead('groups', code); }
+async function fsSaveGroup(gData)   { await fsWrite('groups', gData.code, gData); }
 
 // ── Global safety net: any unhandled async throw kills the spinner ──
 window.addEventListener('unhandledrejection', function(e) {
