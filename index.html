@@ -1,0 +1,1460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Board Game Selector</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.container { max-width: 900px; margin: 0 auto; }
+
+.card {
+    background: white;
+    border-radius: 12px;
+    padding: 30px;
+    margin-bottom: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+/* ── Typography ── */
+h1 { color:#333; margin-bottom:8px; font-size:28px; }
+h2 { color:#333; margin-bottom:16px; font-size:22px; }
+h3 { color:#444; margin-bottom:12px; font-size:18px; }
+.subtitle { color:#666; margin-bottom:24px; font-size:15px; }
+
+/* ── Pages ── */
+.page { display:none; }
+.page.active { display:block; }
+
+/* ── Top bar ── */
+.topbar {
+    display:flex; justify-content:space-between; align-items:center;
+    margin-bottom:24px; padding-bottom:16px; border-bottom:2px solid #eee;
+}
+.topbar-left { display:flex; align-items:center; gap:12px; }
+.topbar .logo { font-size:24px; font-weight:700; color:#667eea; cursor:pointer; }
+.topbar .user-tag { font-size:14px; color:#666; background:#f0f0f0; padding:4px 10px; border-radius:20px; }
+.topbar button { margin:0; padding:8px 16px; font-size:14px; }
+
+/* ── Inputs ── */
+label { display:block; margin-bottom:6px; color:#333; font-weight:500; font-size:14px; }
+input[type="text"], input[type="password"], input[type="number"], input[type="file"] {
+    width:100%; padding:10px 12px; border:2px solid #e0e0e0; border-radius:8px;
+    font-size:15px; margin-bottom:16px; transition:border-color 0.2s;
+}
+input[type="text"]:focus, input[type="password"]:focus, input[type="number"]:focus {
+    outline:none; border-color:#667eea;
+}
+input[type="file"] { padding:8px; }
+
+/* ── Buttons ── */
+button {
+    -webkit-appearance: none;
+    background:#667eea; color:white; border:none; padding:10px 20px;
+    border-radius:8px; font-size:15px; font-weight:600; cursor:pointer;
+    transition:background 0.2s; margin-right:8px; margin-bottom:8px;
+}
+button:hover { background:#5568d3; }
+button:disabled { background:#ccc; cursor:not-allowed; }
+button.secondary { background:#6c757d; }
+button.secondary:hover { background:#5a6268; }
+button.success { background:#28a745; }
+button.success:hover { background:#218838; }
+button.danger { background:#dc3545; }
+button.danger:hover { background:#c82333; }
+button.ghost {
+    background:transparent; color:#667eea; border:2px solid #667eea;
+    padding:8px 16px; font-size:14px;
+}
+button.ghost:hover { background:#667eea; color:white; }
+
+/* ── Alerts ── */
+.alert { border-radius:8px; padding:12px 16px; margin-bottom:16px; font-size:14px; display:none; }
+.alert.error { background:#fee; border:2px solid #fcc; color:#c33; }
+.alert.success { background:#d4edda; border:2px solid #c3e6cb; color:#155724; }
+.alert.info { background:#d1ecf1; border:2px solid #bee5eb; color:#0c5460; }
+
+/* ── Cards / Lists ── */
+.list-item {
+    background:#f8f9fa; border-radius:8px; padding:12px 16px;
+    margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;
+}
+.list-item:hover { background:#f0f1f3; }
+.list-item-left { flex:1; }
+.list-item-left .item-title { font-weight:600; color:#333; }
+.list-item-left .item-sub { font-size:13px; color:#666; margin-top:2px; }
+
+/* ── Group card on dashboard ── */
+.group-card {
+    background:#f8f9fa; border:2px solid #e0e0e0; border-radius:10px;
+    padding:18px; margin-bottom:10px; cursor:pointer; transition:all 0.2s;
+    display:flex; justify-content:space-between; align-items:center;
+}
+.group-card:hover { border-color:#667eea; background:#f0f4ff; }
+.group-card .gc-title { font-weight:700; color:#333; font-size:16px; }
+.group-card .gc-sub { font-size:13px; color:#666; margin-top:3px; }
+.group-card .gc-arrow { font-size:20px; color:#667eea; }
+
+/* ── Vote summary card ── */
+.vote-card {
+    background:#f8f9fa; border:2px solid #e0e0e0; border-radius:10px;
+    padding:14px 18px; margin-bottom:8px; cursor:pointer; transition:all 0.2s;
+    display:flex; justify-content:space-between; align-items:center;
+}
+.vote-card:hover { border-color:#667eea; background:#f0f4ff; }
+.vote-card .vc-title { font-weight:600; color:#333; font-size:15px; }
+.vote-card .vc-sub { font-size:12px; color:#666; margin-top:2px; }
+.vote-card .vc-badge {
+    font-size:11px; font-weight:600; padding:3px 8px; border-radius:12px;
+    background:#667eea; color:white; white-space:nowrap;
+}
+.vote-card .vc-badge.completed { background:#28a745; }
+
+/* ── Game items ── */
+.game-item {
+    background:#f8f9fa; border-radius:8px; padding:12px 14px;
+    margin-bottom:8px; display:flex; gap:12px; align-items:center;
+    transition:background 0.2s;
+}
+.game-item:hover { background:#eef0f3; }
+.game-item.promoted { background:#d1e7dd; border:2px solid #0f5132; }
+.game-item.vetoed { opacity:0.55; background:#f8d7da; }
+
+.game-image {
+    width:70px; height:70px; object-fit:cover; border-radius:6px;
+    flex-shrink:0; background:#e0e0e0;
+}
+.game-image-placeholder {
+    width:70px; height:70px; background:linear-gradient(135deg,#667eea,#764ba2);
+    border-radius:6px; display:flex; align-items:center; justify-content:center;
+    color:white; font-size:24px; flex-shrink:0;
+}
+.game-info { flex:1; min-width:0; }
+.game-info .game-name { font-weight:600; color:#333; font-size:15px; }
+.game-info .game-details { font-size:12px; color:#666; margin-top:2px; }
+.game-info .game-owners { font-size:12px; color:#667eea; font-weight:500; margin-top:2px; }
+.game-info .game-vote-summary { font-size:12px; color:#555; margin-top:4px; }
+.game-info .game-vote-summary .vote-tag {
+    display:inline-block; font-size:11px; padding:2px 6px; border-radius:10px; margin-right:3px;
+}
+.vote-tag.promote { background:#d1e7dd; color:#0f5132; }
+.vote-tag.veto { background:#f8d7da; color:#c33; }
+
+.game-actions { display:flex; gap:6px; flex-shrink:0; }
+.game-actions button { padding:6px 12px; font-size:13px; margin:0; }
+.promote-btn { background:#28a745; }
+.promote-btn:hover { background:#218838; }
+
+/* ── Participant cards ── */
+.participant-grid {
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(220px,1fr));
+    gap:10px; margin:16px 0;
+}
+.participant-card {
+    background:#f8f9fa; border:2px solid #e0e0e0; border-radius:8px;
+    padding:14px; cursor:pointer; transition:all 0.2s;
+}
+.participant-card:hover { border-color:#667eea; }
+.participant-card.selected { border-color:#667eea; background:#e7f0ff; }
+.participant-card label { cursor:pointer; margin:0; }
+.participant-card .pc-row { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+.participant-card .pc-sub { font-size:12px; color:#666; }
+
+/* ── Dual-range slider ── */
+.slider-container { margin-bottom:22px; }
+.slider-label { display:flex; justify-content:space-between; margin-bottom:6px; font-size:14px; }
+.dual-range { position:relative; height:36px; display:flex; align-items:center; user-select:none; }
+.dual-range-track { position:absolute; width:100%; height:6px; background:#e0e0e0; border-radius:3px; }
+.dual-range-selected { position:absolute; height:100%; background:#667eea; border-radius:3px; }
+.dual-range-thumb {
+    position:absolute; width:20px; height:20px; border-radius:50%;
+    background:#667eea; border:3px solid white; box-shadow:0 1px 4px rgba(0,0,0,0.3);
+    cursor:grab; top:50%; transform:translate(-50%,-50%); z-index:2;
+}
+.dual-range-thumb:active { cursor:grabbing; }
+
+/* ── Checkbox row ── */
+.checkbox-row { display:flex; align-items:center; gap:8px; margin-bottom:14px; }
+.checkbox-row input[type="checkbox"] { width:18px; height:18px; cursor:pointer; margin:0; }
+.checkbox-row label { margin:0; cursor:pointer; font-size:14px; }
+
+/* ── Winner card ── */
+.winner-card {
+    background:linear-gradient(135deg,#667eea,#764ba2); color:white;
+    border-radius:12px; padding:28px; margin:16px 0; text-align:center;
+}
+.winner-card h3 { font-size:26px; margin-bottom:8px; color:white; }
+.stats-grid {
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(120px,1fr));
+    gap:10px; margin-top:16px;
+}
+.stat-item { background:rgba(255,255,255,0.12); padding:12px; border-radius:8px; text-align:center; }
+.stat-label { font-size:12px; opacity:0.85; margin-bottom:4px; }
+.stat-value { font-size:18px; font-weight:600; }
+
+/* ── Code display ── */
+.code-display {
+    background:#f8f9fa; border:2px solid #667eea; border-radius:8px;
+    padding:16px; text-align:center; margin:16px 0;
+}
+.code-display .code { font-size:28px; font-weight:700; color:#667eea; letter-spacing:4px; font-family:monospace; }
+.code-display .code-label { font-size:13px; color:#666; margin-bottom:6px; }
+
+/* ── Login page specific ── */
+.login-container { max-width:420px; margin:0 auto; }
+.login-tabs { display:flex; gap:0; margin-bottom:24px; border-radius:8px; overflow:hidden; border:2px solid #e0e0e0; }
+.login-tab {
+    flex:1; padding:12px; text-align:center; cursor:pointer; font-weight:600;
+    font-size:15px; background:#f8f9fa; color:#666; border:none; transition:all 0.2s; margin:0;
+}
+.login-tab.active { background:#667eea; color:white; }
+.login-tab:hover:not(.active) { background:#eee; }
+
+/* ── Password warning ── */
+.pw-warning {
+    background:#fff3cd; border:1px solid #ffc107; border-radius:6px;
+    padding:10px 12px; margin-bottom:14px; font-size:13px; color:#856404;
+}
+
+/* ── Inline confirm ── */
+.inline-confirm { display:flex; gap:6px; align-items:center; }
+.inline-confirm span { font-size:13px; color:#c33; font-weight:600; }
+.inline-confirm button { margin:0; padding:5px 10px; font-size:13px; }
+
+/* ── Add member input row ── */
+.add-member-row { display:flex; gap:8px; margin-bottom:16px; }
+.add-member-row input { margin-bottom:0; flex:1; }
+.add-member-row button { margin-bottom:0; white-space:nowrap; }
+
+/* ── Section divider ── */
+.section { margin-top:24px; padding-top:20px; border-top:2px solid #eee; }
+
+/* ── Loading ── */
+.loading-overlay {
+    position:fixed; inset:0; background:rgba(0,0,0,0.4);
+    display:none; align-items:center; justify-content:center; z-index:999;
+}
+.loading-overlay.show { display:flex; }
+.spinner {
+    border:4px solid #f3f3f3; border-top:4px solid white; border-radius:50%;
+    width:40px; height:40px; animation:spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="container">
+
+<!-- ════════════════════════════════════════════════════════════
+     PAGE: LOGIN / REGISTER
+     ════════════════════════════════════════════════════════════ -->
+<div class="page active" id="page-login">
+  <div class="login-container">
+    <div class="card" style="text-align:center; padding-top:40px; padding-bottom:10px;">
+      <h1>🎲 Board Game Selector</h1>
+      <p class="subtitle">Choose what to play tonight</p>
+
+      <div class="login-tabs">
+        <button type="button" class="login-tab active" id="tab-login" onclick="switchLoginTab('login')">Log In</button>
+        <button type="button" class="login-tab" id="tab-register" onclick="switchLoginTab('register')">Sign Up</button>
+      </div>
+
+      <div id="login-form">
+        <div class="alert error" id="login-error"></div>
+        <label for="login-username">Username</label>
+        <input type="text" id="login-username" placeholder="your username" autocomplete="off">
+        <label for="login-password">Password</label>
+        <input type="password" id="login-password" placeholder="••••••••" autocomplete="off">
+        <button onclick="doLogin()" style="width:100%; margin:8px 0;">Log In</button>
+      </div>
+
+      <div id="register-form" style="display:none;">
+        <div class="alert error" id="register-error"></div>
+        <div class="pw-warning">⚠️ This app stores data locally in your browser. Please <strong>do not</strong> use a password you use on any other website or service.</div>
+        <label for="reg-username">Username</label>
+        <input type="text" id="reg-username" placeholder="choose a username" autocomplete="off">
+        <label for="reg-displayname">Display Name</label>
+        <input type="text" id="reg-displayname" placeholder="e.g. Mark" autocomplete="off">
+        <label for="reg-password">Password</label>
+        <input type="password" id="reg-password" placeholder="••••••••" autocomplete="off">
+        <label for="reg-password2">Confirm Password</label>
+        <input type="password" id="reg-password2" placeholder="••••••••" autocomplete="off">
+        <button type="button" id="doRegister-btn" onclick="doRegister()" style="width:100%; margin:8px 0;">Create Account</button>
+
+        <div id="reg-collection-section" style="display:none; margin-top:20px; padding-top:18px; border-top:2px solid #eee;">
+          <p style="font-size:13px; color:#666; margin-bottom:10px;"><strong>Optional:</strong> Upload your BGG collection now so it's ready when you join a group.</p>
+          <label for="reg-col-csv">Upload BGG CSV / TSV export</label>
+          <input type="file" id="reg-col-csv" accept=".csv,.tsv" onchange="loadCollectionCSVFrom('reg-col-csv')">
+          <div class="alert success" id="reg-collection-success" style="display:none;"></div>
+          <button type="button" onclick="goHome()" style="width:100%; margin-top:8px;">Continue to Home →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     PAGE: HOME DASHBOARD
+     ════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-home">
+  <div class="card">
+    <div class="topbar">
+      <div class="topbar-left">
+        <span class="logo">🎲 Board Game Selector</span>
+        <span class="user-tag" id="home-usertag"></span>
+      </div>
+      <button class="secondary" onclick="doLogout()">Log Out</button>
+    </div>
+
+    <h2>My Groups</h2>
+    <div id="home-groups"></div>
+
+    <div class="section">
+      <h3>Join or Create</h3>
+      <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
+        <button class="success" onclick="showCreateGroupModal()">+ Create New Group</button>
+        <button class="ghost" onclick="showJoinGroupModal()">Join with Code</button>
+      </div>
+    </div>
+
+    <!-- Collection upload on homepage -->
+    <div class="section">
+      <h3>Game Collection</h3>
+      <div id="home-collection-status"></div>
+      <label for="home-col-csv">Upload BGG CSV / TSV export</label>
+      <input type="file" id="home-col-csv" accept=".csv,.tsv" onchange="loadCollectionCSVFrom('home-col-csv')"></div>
+
+    <!-- Create group inline panel -->
+    <div id="create-group-panel" style="display:none;" class="section">
+      <div class="alert error" id="create-group-error"></div>
+      <h3>Create a New Group</h3>
+      <label for="new-group-name">Group Name</label>
+      <input type="text" id="new-group-name" placeholder="e.g. Friday Night Games">
+      <label>Invite existing users (optional, comma-separated usernames)</label>
+      <input type="text" id="new-group-invite" placeholder="alice, bob">
+      <button onclick="doCreateGroup()">Create Group</button>
+      <button class="secondary" onclick="hideCreateGroupModal()">Cancel</button>
+    </div>
+
+    <!-- Join group inline panel -->
+    <div id="join-group-panel" style="display:none;" class="section">
+      <div class="alert error" id="join-group-error"></div>
+      <h3>Join an Existing Group</h3>
+      <label for="join-code">Group Code</label>
+      <input type="text" id="join-code" placeholder="e.g. AB3X7K">
+      <button onclick="doJoinGroup()">Join Group</button>
+      <button class="secondary" onclick="hideJoinGroupModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     PAGE: GROUP HOME
+     ════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-group">
+  <div class="card">
+    <div class="topbar">
+      <div class="topbar-left">
+        <span class="logo" onclick="goHome()">🎲</span>
+        <span id="group-header-name" style="font-weight:700; color:#333; font-size:18px;"></span>
+      </div>
+      <button class="secondary" onclick="doLogout()">Log Out</button>
+    </div>
+
+    <div class="code-display">
+      <div class="code-label">Group Code – share this so others can join</div>
+      <div class="code" id="group-code-display"></div>
+    </div>
+
+    <!-- Members -->
+    <h3>Members</h3>
+    <div class="add-member-row">
+      <input type="text" id="add-member-input" placeholder="Username to add…">
+      <button onclick="doAddMember()">Add</button>
+    </div>
+    <div class="alert error" id="group-add-error"></div>
+    <div id="group-members"></div>
+
+    <!-- Active votes -->
+    <div class="section">
+      <h3>Votes</h3>
+      <div id="group-votes"></div>
+      <button class="success" onclick="startNewVote()" style="margin-top:10px;">+ Start a New Vote</button>
+    </div>
+
+    <!-- Leave group / go home -->
+    <div class="section">
+      <button onclick="goHome()">🏠 Back to Home</button>
+      <button class="secondary" onclick="doLeaveGroup()">Leave This Group</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     PAGE: VOTE – UPLOAD COLLECTION (shown once per account if needed)
+     ════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-collection">
+  <div class="card">
+    <div class="topbar">
+      <span class="logo" onclick="goHome()">🎲</span>
+      <button class="secondary" onclick="doLogout()">Log Out</button>
+    </div>
+    <h2>Add Your Game Collection</h2>
+    <p class="subtitle">Upload your BGG collection so it can be used in votes. You only need to do this once – it will be saved to your account.</p>
+    <div class="alert info" id="collection-info">You don't have a collection loaded yet. Upload one now, or skip if you prefer.</div>
+    <div class="alert error" id="collection-error"></div>
+
+    <label for="col-csv">Upload BGG CSV / TSV export</label>
+    <input type="file" id="col-csv" accept=".csv,.tsv" onchange="loadCollectionCSVFrom('col-csv')">
+
+    <div style="margin-top:8px;">
+      <button class="secondary" onclick="skipCollection()">Skip – Continue Without Collection</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     PAGE: VOTE FLOW – Select Participants
+     ════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-vote-participants">
+  <div class="card">
+    <div class="topbar">
+      <span class="logo" onclick="goHome()">🎲</span>
+      <button class="secondary" onclick="doLogout()">Log Out</button>
+    </div>
+    <h2>Select Participants</h2>
+    <p class="subtitle">Choose who is playing and whose collections to include.</p>
+    <div class="alert error" id="vp-error"></div>
+    <div class="participant-grid" id="vp-cards"></div>
+    <button onclick="vpContinue()">Continue to Filters</button>
+    <button class="secondary" onclick="goBackToGroup()">Cancel</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     PAGE: VOTE FLOW – Filters
+     ════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-vote-filters">
+  <div class="card">
+    <div class="topbar">
+      <span class="logo" onclick="goHome()">🎲</span>
+      <button class="secondary" onclick="doLogout()">Log Out</button>
+    </div>
+    <h2>Filter Games</h2>
+    <div class="alert error" id="vf-error"></div>
+
+    <div class="checkbox-row">
+      <input type="checkbox" id="filter-no-expansions" checked>
+      <label for="filter-no-expansions">Exclude expansions</label>
+    </div>
+
+    <label>Number of Players</label>
+    <input type="number" id="filter-players" min="1" max="20" value="4" style="max-width:120px;">
+
+    <div class="slider-container">
+      <div class="slider-label"><label style="margin:0;">Playing Time (min)</label><span id="time-label">0 – 480 min</span></div>
+      <div class="dual-range" id="dr-time">
+        <div class="dual-range-track"><div class="dual-range-selected"></div></div>
+        <div class="dual-range-thumb dual-range-thumb-min"></div>
+        <div class="dual-range-thumb dual-range-thumb-max"></div>
+      </div>
+    </div>
+    <div class="slider-container">
+      <div class="slider-label"><label style="margin:0;">Complexity</label><span id="complexity-label">1.0 – 5.0</span></div>
+      <div class="dual-range" id="dr-complexity">
+        <div class="dual-range-track"><div class="dual-range-selected"></div></div>
+        <div class="dual-range-thumb dual-range-thumb-min"></div>
+        <div class="dual-range-thumb dual-range-thumb-max"></div>
+      </div>
+    </div>
+    <div class="slider-container">
+      <div class="slider-label"><label style="margin:0;">BGG Rating</label><span id="rating-label">1.0 – 10.0</span></div>
+      <div class="dual-range" id="dr-rating">
+        <div class="dual-range-track"><div class="dual-range-selected"></div></div>
+        <div class="dual-range-thumb dual-range-thumb-min"></div>
+        <div class="dual-range-thumb dual-range-thumb-max"></div>
+      </div>
+    </div>
+
+    <button onclick="vfApply()">Apply Filters</button>
+    <button class="secondary" onclick="goToPage('page-vote-participants')">Back</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     PAGE: VOTE FLOW – Voting
+     ════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-vote-voting">
+  <div class="card">
+    <div class="topbar">
+      <span class="logo" onclick="goHome()">🎲</span>
+      <button class="secondary" onclick="doLogout()">Log Out</button>
+    </div>
+    <h2>Vote on Games</h2>
+    <div class="checkbox-row">
+      <input type="checkbox" id="vote-hide-vetoed" onchange="renderVotingList()">
+      <label for="vote-hide-vetoed">Hide vetoed games</label>
+    </div>
+    <p style="font-size:13px; color:#666; margin-bottom:12px;" id="vote-count-label"></p>
+    <div id="voting-list"></div>
+    <button onclick="voteFinish()">See Suggested Game</button>
+    <button class="secondary" onclick="goToPage('page-vote-filters')">Back to Filters</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     PAGE: VOTE FLOW – Result
+     ════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-vote-result">
+  <div class="card" style="text-align:center;">
+    <div class="topbar">
+      <span class="logo" onclick="goHome()">🎲</span>
+      <button class="secondary" onclick="doLogout()">Log Out</button>
+    </div>
+    <h2>🎯 Suggested Game</h2>
+    <div id="result-winner"></div>
+    <button class="success" onclick="suggestAnother()">Suggest Another</button>
+    <button class="secondary" onclick="goToPage('page-vote-voting')">Back to Voting</button>
+    <button onclick="goBackToGroup()">Back to Group</button>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loading"><div class="spinner"></div></div>
+
+<script>
+// ════════════════════════════════════════════════════════════════════
+// DATA LAYER – everything persisted in localStorage
+// ════════════════════════════════════════════════════════════════════
+function loadStore(key, def) {
+    try { return JSON.parse(localStorage.getItem(key)) || def; } catch(e) { return def; }
+}
+function saveStore(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+
+let users  = loadStore('bgg_users', {});   // { [username]: userObj }
+let groups = loadStore('bgg_groups', {});  // { [code]: groupObj }
+let session = loadStore('bgg_session', null); // { username } | null
+
+function saveUsers()  { saveStore('bgg_users', users); }
+function saveGroups() { saveStore('bgg_groups', groups); }
+function saveSession(){ saveStore('bgg_session', session); }
+
+function getUser(username) { return users[username] || null; }
+function getGroup(code)    { return groups[code] || null; }
+function currentUser()     { return session ? getUser(session.username) : null; }
+
+// ════════════════════════════════════════════════════════════════════
+// SIMPLE PASSWORD HASHING (not cryptographic – matches the warning)
+// Uses a basic hash so passwords aren't stored in plain text in localStorage
+// ════════════════════════════════════════════════════════════════════
+function simpleHash(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        const chr = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + chr;
+        hash |= 0;
+    }
+    // Second pass for slightly better distribution
+    let hash2 = 5381;
+    for (let i = 0; i < str.length; i++) {
+        hash2 = ((hash2 << 5) + hash2) + str.charCodeAt(i);
+        hash2 |= 0;
+    }
+    return hash.toString(36) + '_' + hash2.toString(36);
+}
+
+// ════════════════════════════════════════════════════════════════════
+// UI HELPERS
+// ════════════════════════════════════════════════════════════════════
+function goToPage(id) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+}
+function showAlert(id, msg) {
+    const el = document.getElementById(id);
+    el.textContent = msg; el.style.display = 'block';
+    setTimeout(() => el.style.display = 'none', 7000);
+}
+function hideAlert(id) { document.getElementById(id).style.display = 'none'; }
+
+function showLoading(on) { document.getElementById('loading').classList.toggle('show', on); }
+
+function generateCode() {
+    return Math.random().toString(36).substring(2,8).toUpperCase();
+}
+function generateVoteId() {
+    return 'v_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+}
+
+// Inline confirm (replaces blocked confirm())
+function inlineConfirm(container, message, onYes, onNo) {
+    container.innerHTML = '';
+    const wrap = document.createElement('div');
+    wrap.className = 'inline-confirm';
+    wrap.innerHTML = `<span>${message}</span>`;
+    const yes = document.createElement('button');
+    yes.textContent = 'Yes'; yes.className = 'danger';
+    yes.onclick = () => { onYes(); };
+    const no = document.createElement('button');
+    no.textContent = 'No'; no.className = 'secondary';
+    no.onclick = () => { onNo(); };
+    wrap.appendChild(yes); wrap.appendChild(no);
+    container.appendChild(wrap);
+}
+
+// ════════════════════════════════════════════════════════════════════
+// AUTH – Login / Register / Logout
+// ════════════════════════════════════════════════════════════════════
+function switchLoginTab(tab) {
+    document.getElementById('login-form').style.display = tab === 'login' ? 'block' : 'none';
+    document.getElementById('register-form').style.display = tab === 'register' ? 'block' : 'none';
+    document.getElementById('tab-login').classList.toggle('active', tab === 'login');
+    document.getElementById('tab-register').classList.toggle('active', tab === 'register');
+}
+
+function doLogin() {
+    hideAlert('login-error');
+    const username = document.getElementById('login-username').value.trim();
+    const password = document.getElementById('login-password').value;
+    if (!username || !password) { showAlert('login-error','Please enter username and password'); return; }
+
+    const user = getUser(username);
+    if (!user) { showAlert('login-error','Username not found'); return; }
+    if (user.passwordHash !== simpleHash(password)) { showAlert('login-error','Incorrect password'); return; }
+
+    session = { username };
+    saveSession();
+    document.getElementById('login-username').value = '';
+    document.getElementById('login-password').value = '';
+    goHome();
+}
+
+function doRegister() {
+    hideAlert('register-error');
+    const username = document.getElementById('reg-username').value.trim().toLowerCase().replace(/[^a-z0-9_]/g,'');
+    const displayName = document.getElementById('reg-displayname').value.trim();
+    const password = document.getElementById('reg-password').value;
+    const password2 = document.getElementById('reg-password2').value;
+
+    if (!username) { showAlert('register-error','Please enter a valid username (letters, numbers, underscores only)'); return; }
+    if (!displayName) { showAlert('register-error','Please enter a display name'); return; }
+    if (password.length < 4) { showAlert('register-error','Password must be at least 4 characters'); return; }
+    if (password !== password2) { showAlert('register-error','Passwords do not match'); return; }
+    if (getUser(username)) { showAlert('register-error','That username is already taken'); return; }
+
+    users[username] = {
+        username,
+        displayName,
+        passwordHash: simpleHash(password),
+        groups: [],
+        games: [],
+        createdAt: new Date().toISOString()
+    };
+    saveUsers();
+
+    session = { username };
+    saveSession();
+    document.getElementById('reg-username').value = '';
+    document.getElementById('reg-displayname').value = '';
+    document.getElementById('reg-password').value = '';
+    document.getElementById('reg-password2').value = '';
+
+    // Show optional collection upload step
+    document.getElementById('reg-collection-section').style.display = 'block';
+    document.getElementById('doRegister-btn').style.display = 'none';
+}
+
+function doLogout() {
+    session = null;
+    saveSession();
+    goToPage('page-login');
+}
+
+// ════════════════════════════════════════════════════════════════════
+// HOME DASHBOARD
+// ════════════════════════════════════════════════════════════════════
+function goHome() {
+    if (!session) { goToPage('page-login'); return; }
+    const user = currentUser();
+    if (!user) { doLogout(); return; }
+
+    document.getElementById('home-usertag').textContent = user.displayName;
+    renderHomeGroups();
+    renderHomeCollection();
+    hideCreateGroupModal();
+    hideJoinGroupModal();
+    goToPage('page-home');
+}
+
+function renderHomeGroups() {
+    const container = document.getElementById('home-groups');
+    const user = currentUser();
+    container.innerHTML = '';
+
+    if (!user.groups || user.groups.length === 0) {
+        container.innerHTML = '<p style="color:#666; font-size:14px; padding:12px 0;">You haven\'t joined any groups yet.</p>';
+        return;
+    }
+
+    user.groups.forEach(code => {
+        const g = getGroup(code);
+        if (!g) return; // group was deleted
+        const activeVotes = Object.values(g.votes || {}).filter(v => v.status === 'active' && v.participants.includes(user.username));
+        const div = document.createElement('div');
+        div.className = 'group-card';
+        div.onclick = () => goToGroup(code);
+        div.innerHTML = `
+            <div>
+                <div class="gc-title">${g.name}</div>
+                <div class="gc-sub">${g.members.length} member${g.members.length !== 1 ? 's' : ''}
+                    ${activeVotes.length > 0 ? ' • <strong style="color:#667eea;">' + activeVotes.length + ' active vote' + (activeVotes.length !== 1 ? 's' : '') + '</strong>' : ''}
+                </div>
+            </div>
+            <div class="gc-arrow">›</div>
+        `;
+        container.appendChild(div);
+    });
+}
+
+function showCreateGroupModal() { document.getElementById('create-group-panel').style.display='block'; hideJoinGroupModal(); }
+function hideCreateGroupModal() { document.getElementById('create-group-panel').style.display='none'; hideAlert('create-group-error'); }
+function showJoinGroupModal()   { document.getElementById('join-group-panel').style.display='block'; hideCreateGroupModal(); }
+function hideJoinGroupModal()   { document.getElementById('join-group-panel').style.display='none'; hideAlert('join-group-error'); }
+
+function doCreateGroup() {
+    hideAlert('create-group-error');
+    const name = document.getElementById('new-group-name').value.trim();
+    const inviteStr = document.getElementById('new-group-invite').value.trim();
+    if (!name) { showAlert('create-group-error','Please enter a group name'); return; }
+
+    const code = generateCode();
+    const user = currentUser();
+
+    // Parse invited usernames
+    const invitedUsernames = inviteStr ? inviteStr.split(',').map(s => s.trim().toLowerCase()).filter(Boolean) : [];
+    const members = [user.username];
+    const warnings = [];
+
+    invitedUsernames.forEach(u => {
+        if (u === user.username) return;
+        if (!getUser(u)) { warnings.push(`User "${u}" not found – skipped`); return; }
+        if (!members.includes(u)) members.push(u);
+    });
+
+    groups[code] = { code, name, createdBy: user.username, members, votes: {}, createdAt: new Date().toISOString() };
+    saveGroups();
+
+    // Add group to all members' user records
+    members.forEach(m => {
+        const mu = getUser(m);
+        if (mu && !mu.groups.includes(code)) { mu.groups.push(code); }
+    });
+    saveUsers();
+
+    document.getElementById('new-group-name').value = '';
+    document.getElementById('new-group-invite').value = '';
+    hideCreateGroupModal();
+
+    if (warnings.length) showAlert('create-group-error', warnings.join('; '));
+    goToGroup(code);
+}
+
+function doJoinGroup() {
+    hideAlert('join-group-error');
+    const code = document.getElementById('join-code').value.trim().toUpperCase();
+    if (!code) { showAlert('join-group-error','Please enter a group code'); return; }
+    const g = getGroup(code);
+    if (!g) { showAlert('join-group-error','Group not found – check the code'); return; }
+
+    const user = currentUser();
+    if (g.members.includes(user.username)) { showAlert('join-group-error','You are already in this group'); return; }
+
+    g.members.push(user.username);
+    saveGroups();
+    if (!user.groups.includes(code)) { user.groups.push(code); saveUsers(); }
+
+    document.getElementById('join-code').value = '';
+    hideJoinGroupModal();
+    goToGroup(code);
+}
+
+// ════════════════════════════════════════════════════════════════════
+// GROUP PAGE
+// ════════════════════════════════════════════════════════════════════
+let activeGroupCode = null;
+
+function goToGroup(code) {
+    const g = getGroup(code);
+    if (!g) { goHome(); return; }
+    activeGroupCode = code;
+
+    document.getElementById('group-header-name').textContent = g.name;
+    document.getElementById('group-code-display').textContent = g.code;
+    renderGroupMembers();
+    renderGroupVotes();
+    goToPage('page-group');
+}
+
+function goBackToGroup() {
+    if (activeGroupCode) goToGroup(activeGroupCode);
+    else goHome();
+}
+
+function renderGroupMembers() {
+    const g = getGroup(activeGroupCode);
+    const container = document.getElementById('group-members');
+    const me = currentUser();
+    container.innerHTML = '';
+
+    g.members.forEach(username => {
+        const u = getUser(username);
+        if (!u) return;
+        const isMe = username === me.username;
+        const div = document.createElement('div');
+        div.className = 'list-item';
+        div.id = 'member-' + username;
+        div.innerHTML = `
+            <div class="list-item-left">
+                <div class="item-title">${u.displayName} <span style="color:#999; font-size:12px;">(${u.username})</span>${isMe ? ' <span style="color:#667eea; font-size:11px; font-weight:600;">YOU</span>' : ''}</div>
+                <div class="item-sub">${u.games && u.games.length > 0 ? u.games.length + ' games in collection' : 'No collection'}</div>
+            </div>
+            <div id="member-actions-${username}">
+                ${!isMe ? '<button class="secondary" style="padding:5px 10px; font-size:13px; margin:0;" onclick="removeMember(\''+username+'\')">Remove</button>' : ''}
+            </div>
+        `;
+        container.appendChild(div);
+    });
+}
+
+function removeMember(username) {
+    const actionsDiv = document.getElementById('member-actions-' + username);
+    inlineConfirm(actionsDiv, 'Remove?',
+        () => {
+            const g = getGroup(activeGroupCode);
+            g.members = g.members.filter(m => m !== username);
+            // Also remove group from user's list
+            const u = getUser(username);
+            if (u) { u.groups = u.groups.filter(c => c !== activeGroupCode); saveUsers(); }
+            saveGroups();
+            renderGroupMembers();
+        },
+        () => { renderGroupMembers(); }
+    );
+}
+
+function doAddMember() {
+    const input = document.getElementById('add-member-input');
+    const username = input.value.trim().toLowerCase();
+    if (!username) return;
+
+    const g = getGroup(activeGroupCode);
+    const u = getUser(username);
+    if (!u) { showAlert('group-add-error', 'User "' + username + '" not found'); input.value=''; return; }
+    if (g.members.includes(username)) { showAlert('group-add-error', 'That user is already in this group'); input.value=''; return; }
+
+    g.members.push(username);
+    if (!u.groups.includes(activeGroupCode)) { u.groups.push(activeGroupCode); }
+    saveGroups(); saveUsers();
+    input.value = '';
+    renderGroupMembers();
+}
+
+function renderGroupVotes() {
+    const g = getGroup(activeGroupCode);
+    const me = currentUser();
+    const container = document.getElementById('group-votes');
+    container.innerHTML = '';
+
+    // Only show votes where I am a participant
+    const myVotes = Object.values(g.votes || {}).filter(v => v.participants.includes(me.username));
+
+    if (myVotes.length === 0) {
+        container.innerHTML = '<p style="color:#666; font-size:13px; padding:8px 0;">No votes yet.</p>';
+        return;
+    }
+
+    // Sort: active first, then by date desc
+    myVotes.sort((a, b) => {
+        if (a.status !== b.status) return a.status === 'active' ? -1 : 1;
+        return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+
+    myVotes.forEach(vote => {
+        const div = document.createElement('div');
+        div.className = 'vote-card';
+        div.onclick = () => openVote(vote.id);
+
+        const gameCount = (vote.filteredGames || []).length;
+        const isActive = vote.status === 'active';
+        const summary = isActive
+            ? `${gameCount} games • ${vote.participants.length} participants`
+            : `Winner: ${vote.winner ? vote.winner.name : '—'}`;
+
+        div.innerHTML = `
+            <div>
+                <div class="vc-title">Vote by ${getUser(vote.createdBy)?.displayName || vote.createdBy}</div>
+                <div class="vc-sub">${summary} • ${new Date(vote.createdAt).toLocaleDateString()}</div>
+            </div>
+            <div class="vc-badge ${isActive ? '' : 'completed'}">${isActive ? 'Active' : 'Completed'}</div>
+        `;
+        container.appendChild(div);
+    });
+}
+
+function doLeaveGroup() {
+    const g = getGroup(activeGroupCode);
+    const me = currentUser();
+    // inline confirm using the group-votes area temporarily
+    const container = document.getElementById('group-votes');
+    inlineConfirm(container, 'Leave this group?',
+        () => {
+            g.members = g.members.filter(m => m !== me.username);
+            me.groups = me.groups.filter(c => c !== activeGroupCode);
+            saveGroups(); saveUsers();
+            goHome();
+        },
+        () => { renderGroupVotes(); }
+    );
+}
+
+// ════════════════════════════════════════════════════════════════════
+// COLLECTION UPLOAD
+// ════════════════════════════════════════════════════════════════════
+let pendingVoteAction = null; // { type: 'new', groupCode } – what to do after collection
+
+async function loadCollectionCSVFrom(inputId) {
+    const input = document.getElementById(inputId);
+    const file = input.files[0];
+    if (!file) return;
+    showLoading(true);
+    try {
+        const games = await parseCSV(file);
+        if (games.length === 0) throw new Error('No owned games found in file');
+        const user = currentUser();
+        if (user) {
+            user.games = games;
+            saveUsers();
+        }
+        showLoading(false);
+
+        // Context-specific feedback
+        if (inputId === 'home-col-csv') {
+            renderHomeCollection();
+        } else if (inputId === 'reg-col-csv') {
+            const el = document.getElementById('reg-collection-success');
+            el.textContent = `✓ Loaded ${games.length} games to your account!`;
+            el.style.display = 'block';
+        } else {
+            // page-collection flow
+            showAlert('collection-info', `Loaded ${games.length} games! You can continue or upload a different file.`);
+            document.getElementById('collection-info').style.display = 'block';
+            if (pendingVoteAction) continueAfterCollection();
+        }
+    } catch(e) {
+        showLoading(false);
+        if (inputId === 'reg-col-csv') {
+            showAlert('register-error', 'Upload error: ' + e.message);
+        } else if (inputId === 'home-col-csv') {
+            showAlert('collection-error', 'Error: ' + e.message);
+        } else {
+            showAlert('collection-error', 'Error: ' + e.message);
+        }
+    }
+    // Reset file input so the same file can be re-uploaded if needed
+    input.value = '';
+}
+
+function renderHomeCollection() {
+    const user = currentUser();
+    const container = document.getElementById('home-collection-status');
+    if (user.games && user.games.length > 0) {
+        container.innerHTML = `<p style="color:#155724; background:#d4edda; border:2px solid #c3e6cb; border-radius:8px; padding:10px 14px; margin-bottom:12px; font-size:14px;">✓ <strong>${user.games.length} games</strong> in your collection. Upload a new file below to replace it.</p>`;
+    } else {
+        container.innerHTML = `<p style="color:#666; font-size:14px; margin-bottom:10px;">You don't have a collection yet. Upload one so it's available in votes.</p>`;
+    }
+}
+
+function skipCollection() {
+    if (pendingVoteAction) continueAfterCollection();
+    else goBackToGroup();
+}
+
+function continueAfterCollection() {
+    if (pendingVoteAction && pendingVoteAction.type === 'new') {
+        activeGroupCode = pendingVoteAction.groupCode;
+        pendingVoteAction = null;
+        beginVoteFlow();
+    }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// CSV PARSER (same robust parser from before)
+// ════════════════════════════════════════════════════════════════════
+async function parseCSV(file) {
+    const text = await file.text();
+    const lines = text.split('\n');
+    if (lines.length < 2) throw new Error('File is empty');
+
+    const sep = lines[0].includes('\t') ? '\t' : ',';
+    const headers = lines[0].toLowerCase().split(sep).map(h => h.trim());
+
+    function fc(...names) {
+        for (const n of names) { const i = headers.indexOf(n.toLowerCase()); if (i >= 0) return i; }
+        return -1;
+    }
+    const nameIdx=fc('objectname','itemname','name'), idIdx=fc('objectid','gameid','id'),
+          minPIdx=fc('minplayers'), maxPIdx=fc('maxplayers'), ptIdx=fc('playingtime'),
+          ratIdx=fc('rating'), avgIdx=fc('average','avgrating'), cwIdx=fc('avgweight','averageweight'),
+          yrIdx=fc('yearpublished'), ownIdx=fc('own','owned'),
+          imgIdx=fc('imageid','image'), typeIdx=fc('itemtype','type');
+
+    const games = [];
+    for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        // Proper quoted-CSV parse
+        const vals = []; let cur = '', inQ = false;
+        for (let j = 0; j < line.length; j++) {
+            const c = line[j];
+            if (c === '"') inQ = !inQ;
+            else if (c === sep && !inQ) { vals.push(cur.trim()); cur = ''; }
+            else cur += c;
+        }
+        vals.push(cur.trim());
+
+        function col(idx) { return (idx >= 0 && idx < vals.length && vals[idx] != null) ? vals[idx].replace(/"/g,'') : ''; }
+
+        const ownedRaw = col(ownIdx);
+        if (ownIdx >= 0 && ownedRaw !== '1') continue;
+
+        const imgId = col(imgIdx);
+        games.push({
+            id: col(idIdx) || i.toString(),
+            name: col(nameIdx) || 'Unknown',
+            minPlayers: parseInt(col(minPIdx)) || 1,
+            maxPlayers: parseInt(col(maxPIdx)) || 10,
+            playingTime: parseInt(col(ptIdx)) || 60,
+            rating: parseFloat(col(ratIdx)) || 5.0,
+            average: parseFloat(col(avgIdx)) || 5.0,
+            complexity: parseFloat(col(cwIdx)) || 2.5,
+            yearPublished: parseInt(col(yrIdx)) || 2000,
+            itemType: col(typeIdx) || 'standalone',
+            imageUrl: imgId ? `https://boardgamegeek.com/image/${imgId}` : null
+        });
+    }
+    return games.filter(g => g.name !== 'Unknown');
+}
+
+// ════════════════════════════════════════════════════════════════════
+// VOTE FLOW
+// ════════════════════════════════════════════════════════════════════
+let currentVote = null; // the live vote object we're working on
+let voteFilteredGames = []; // games after filters applied (before saving to vote)
+
+function startNewVote() {
+    // If user has no collection, send them to upload first
+    const me = currentUser();
+    pendingVoteAction = { type: 'new', groupCode: activeGroupCode };
+    if (!me.games || me.games.length === 0) {
+        goToPage('page-collection');
+        return;
+    }
+    pendingVoteAction = null;
+    beginVoteFlow();
+}
+
+function beginVoteFlow() {
+    // Create a draft vote (not yet saved)
+    const me = currentUser();
+    const g = getGroup(activeGroupCode);
+    currentVote = {
+        id: generateVoteId(),
+        groupCode: activeGroupCode,
+        createdBy: me.username,
+        participants: [],
+        filters: {},
+        filteredGames: [],
+        votes: {},
+        status: 'active',
+        winner: null,
+        createdAt: new Date().toISOString()
+    };
+    renderParticipantCards();
+    goToPage('page-vote-participants');
+}
+
+function openVote(voteId) {
+    const g = getGroup(activeGroupCode);
+    const vote = g.votes[voteId];
+    if (!vote) return;
+    currentVote = vote;
+    voteFilteredGames = vote.filteredGames || [];
+
+    if (vote.status === 'completed') {
+        // Compute tiedCount from stored vote for the footnote
+        const _scores = (vote.filteredGames||[]).map(g=>{ const gv=(vote.votes||{})[g.id]||{}; let s=0; Object.values(gv).forEach(v=>{if(v==="promote")s++;if(v==="veto")s--;}); return s; });
+        const _max = Math.max(..._scores, 0);
+        const _tied = _scores.filter(s=>s===_max).length;
+        renderResultPage(vote.winner, vote, _tied);
+        goToPage('page-vote-result');
+    } else {
+        renderVotingList();
+        goToPage('page-vote-voting');
+    }
+}
+
+// ── Participants ──
+function renderParticipantCards() {
+    const g = getGroup(activeGroupCode);
+    const container = document.getElementById('vp-cards');
+    container.innerHTML = '';
+
+    g.members.forEach((username, idx) => {
+        const u = getUser(username);
+        if (!u) return;
+        const hasGames = u.games && u.games.length > 0;
+        const div = document.createElement('div');
+        div.className = 'participant-card';
+        div.id = 'pc-' + username;
+        div.innerHTML = `
+            <div class="pc-row">
+                <input type="checkbox" id="pc-check-${username}">
+                <label for="pc-check-${username}" style="font-weight:600; color:#333;">${u.displayName}</label>
+            </div>
+            <div class="pc-sub">${hasGames ? u.games.length + ' games' : 'No collection'}</div>
+            ${hasGames ? `<div class="pc-row" style="margin-top:8px;">
+                <input type="checkbox" id="pc-games-${username}" disabled>
+                <label for="pc-games-${username}">Include their games</label>
+            </div>` : ''}
+        `;
+
+        const mainCb = div.querySelector('#pc-check-' + username);
+        const gamesCb = div.querySelector('#pc-games-' + username);
+
+        mainCb.addEventListener('change', () => syncPC(username, div));
+        if (gamesCb) gamesCb.addEventListener('click', e => e.stopPropagation());
+
+        div.addEventListener('click', (e) => {
+            if (e.target.closest('label') || e.target.type === 'checkbox') return;
+            mainCb.checked = !mainCb.checked;
+            syncPC(username, div);
+        });
+
+        container.appendChild(div);
+    });
+}
+
+function syncPC(username, card) {
+    const mainCb = document.getElementById('pc-check-' + username);
+    const gamesCb = document.getElementById('pc-games-' + username);
+    card.classList.toggle('selected', mainCb.checked);
+    if (gamesCb) {
+        gamesCb.disabled = !mainCb.checked;
+        if (!mainCb.checked) gamesCb.checked = false;
+    }
+}
+
+function vpContinue() {
+    hideAlert('vp-error');
+    const g = getGroup(activeGroupCode);
+    const participants = [];
+    const gameMap = new Map();
+
+    g.members.forEach(username => {
+        const cb = document.getElementById('pc-check-' + username);
+        if (!cb || !cb.checked) return;
+        participants.push(username);
+        const gcb = document.getElementById('pc-games-' + username);
+        if (gcb && gcb.checked) {
+            const u = getUser(username);
+            if (u && u.games) {
+                u.games.forEach(game => {
+                    if (!gameMap.has(game.id)) {
+                        gameMap.set(game.id, { ...game, owners: [u.displayName] });
+                    } else {
+                        gameMap.get(game.id).owners.push(u.displayName);
+                    }
+                });
+            }
+        }
+    });
+
+    if (participants.length === 0) { showAlert('vp-error','Select at least one participant'); return; }
+
+    currentVote.participants = participants;
+    const allGames = Array.from(gameMap.values());
+    if (allGames.length === 0) { showAlert('vp-error','No games available – include at least one collection'); return; }
+
+    // Store full candidate list for filtering
+    currentVote._allGames = allGames;
+    document.getElementById('filter-players').value = participants.length;
+    initSliders();
+    goToPage('page-vote-filters');
+}
+
+// ── Filters ──
+let sliders = {};
+
+function initSliders() {
+    // Destroy old if any
+    sliders = {};
+    sliders.time = new DualRange('dr-time', { min:0, max:480, step:15, minVal:0, maxVal:480, labelEl:'time-label', fmt: (a,b) => a+' – '+b+' min' });
+    sliders.complexity = new DualRange('dr-complexity', { min:1, max:5, step:0.1, minVal:1, maxVal:5, labelEl:'complexity-label', fmt: (a,b) => a.toFixed(1)+' – '+b.toFixed(1) });
+    sliders.rating = new DualRange('dr-rating', { min:1, max:10, step:0.1, minVal:1, maxVal:10, labelEl:'rating-label', fmt: (a,b) => a.toFixed(1)+' – '+b.toFixed(1) });
+}
+
+function vfApply() {
+    hideAlert('vf-error');
+    const players = parseInt(document.getElementById('filter-players').value) || 4;
+    const noExp = document.getElementById('filter-no-expansions').checked;
+    const tMin = sliders.time.getMin(), tMax = sliders.time.getMax();
+    const cMin = sliders.complexity.getMin(), cMax = sliders.complexity.getMax();
+    const rMin = sliders.rating.getMin(), rMax = sliders.rating.getMax();
+
+    voteFilteredGames = (currentVote._allGames || []).filter(g => {
+        if (noExp && g.itemType === 'expansion') return false;
+        return g.minPlayers <= players && g.maxPlayers >= players &&
+               g.playingTime >= tMin && g.playingTime <= tMax &&
+               g.complexity >= cMin && g.complexity <= cMax &&
+               g.average >= rMin && g.average <= rMax;
+    });
+
+    if (voteFilteredGames.length === 0) { showAlert('vf-error','No games match – try relaxing the filters'); return; }
+
+    // Save to vote and persist
+    currentVote.filteredGames = voteFilteredGames;
+    currentVote.filters = { players, noExp, tMin, tMax, cMin, cMax, rMin, rMax };
+    saveVote();
+
+    renderVotingList();
+    goToPage('page-vote-voting');
+}
+
+function saveVote() {
+    const g = getGroup(activeGroupCode);
+    // Strip the transient _allGames before saving
+    const toSave = { ...currentVote };
+    delete toSave._allGames;
+    g.votes[currentVote.id] = toSave;
+    saveGroups();
+}
+
+// ── Voting ──
+function renderVotingList() {
+    const container = document.getElementById('voting-list');
+    const hideVetoed = document.getElementById('vote-hide-vetoed').checked;
+    const me = currentUser();
+    const votes = currentVote.votes || {};
+
+    // Score each game
+    const scored = voteFilteredGames.map(game => {
+        const gv = votes[game.id] || {};
+        let score = 0;
+        Object.values(gv).forEach(v => { if (v==='promote') score++; if (v==='veto') score--; });
+        return { game, gv, score };
+    });
+    scored.sort((a, b) => b.score - a.score);
+
+    let display = scored;
+    if (hideVetoed) display = scored.filter(s => !Object.values(s.gv).includes('veto'));
+
+    document.getElementById('vote-count-label').textContent = display.length + ' game' + (display.length !== 1 ? 's' : '') + ' shown';
+    container.innerHTML = '';
+
+    display.forEach(({ game, gv, score }) => {
+        const myVote = gv[me.username] || 'neutral';
+        const promotes = Object.entries(gv).filter(([,v]) => v === 'promote');
+        const vetoes   = Object.entries(gv).filter(([,v]) => v === 'veto');
+
+        const div = document.createElement('div');
+        div.className = 'game-item' + (myVote === 'promote' ? ' promoted' : myVote === 'veto' ? ' vetoed' : '');
+
+        // Build per-person vote tags
+        let voteTags = '';
+        if (promotes.length || vetoes.length) {
+            const tags = [];
+            promotes.forEach(([u]) => { const un = getUser(u); tags.push(`<span class="vote-tag promote">👍 ${un?.displayName||u}</span>`); });
+            vetoes.forEach(([u]) => { const un = getUser(u); tags.push(`<span class="vote-tag veto">👎 ${un?.displayName||u}</span>`); });
+            voteTags = `<div class="game-vote-summary">${tags.join('')}</div>`;
+        }
+
+        const imgHtml = game.imageUrl
+            ? `<img src="${game.imageUrl}" alt="${game.name}" class="game-image" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">`+
+              `<div class="game-image-placeholder" style="display:none;">🎲</div>`
+            : `<div class="game-image-placeholder">🎲</div>`;
+
+        div.innerHTML = `
+            ${imgHtml}
+            <div class="game-info">
+                <div class="game-name">${game.name} (${game.yearPublished})</div>
+                <div class="game-details">${game.minPlayers}–${game.maxPlayers} players • ${game.playingTime} min • Complexity ${game.complexity.toFixed(1)} • Rating ${game.average.toFixed(1)}</div>
+                <div class="game-owners">Owned by: ${(game.owners||[]).join(', ')}</div>
+                ${voteTags}
+            </div>
+            <div class="game-actions">
+                ${myVote === 'neutral'
+                    ? `<button class="promote-btn" onclick="castVote('${game.id}','promote')">👍</button>
+                       <button class="danger" onclick="castVote('${game.id}','veto')">👎</button>`
+                    : `<button class="secondary" onclick="castVote('${game.id}','neutral')">Undo</button>`}
+            </div>
+        `;
+        container.appendChild(div);
+    });
+}
+
+function castVote(gameId, vote) {
+    const me = currentUser();
+    if (!currentVote.votes[gameId]) currentVote.votes[gameId] = {};
+    if (vote === 'neutral') delete currentVote.votes[gameId][me.username];
+    else currentVote.votes[gameId][me.username] = vote;
+    saveVote();
+    renderVotingList();
+}
+
+// ── Result ──
+function voteFinish() {
+    // Pick winner
+    const votes = currentVote.votes || {};
+    const scored = voteFilteredGames.map(game => {
+        const gv = votes[game.id] || {};
+        let score = 0;
+        Object.values(gv).forEach(v => { if (v==='promote') score++; if (v==='veto') score--; });
+        return { game, score };
+    });
+    scored.sort((a,b) => b.score - a.score);
+    const maxScore = scored[0].score;
+    const tied = scored.filter(s => s.score === maxScore);
+    const winner = tied[Math.floor(Math.random() * tied.length)].game;
+
+    currentVote.winner = winner;
+    currentVote.status = 'completed';
+    saveVote();
+
+    renderResultPage(winner, currentVote, tied.length);
+    goToPage('page-vote-result');
+}
+
+function suggestAnother() {
+    // Re-pick from tied games
+    const votes = currentVote.votes || {};
+    const scored = voteFilteredGames.map(game => {
+        const gv = votes[game.id] || {};
+        let score = 0;
+        Object.values(gv).forEach(v => { if (v==='promote') score++; if (v==='veto') score--; });
+        return { game, score };
+    });
+    const maxScore = Math.max(...scored.map(s => s.score));
+    const tied = scored.filter(s => s.score === maxScore);
+    const winner = tied[Math.floor(Math.random() * tied.length)].game;
+
+    currentVote.winner = winner;
+    saveVote();
+    renderResultPage(winner, currentVote, tied.length);
+}
+
+function renderResultPage(game, vote, tiedCount) {
+    const container = document.getElementById('result-winner');
+    const gv = (vote.votes || {})[game.id] || {};
+    const promotes = Object.values(gv).filter(v => v === 'promote').length;
+
+    const imgHtml = game.imageUrl
+        ? `<img src="${game.imageUrl}" alt="${game.name}" style="max-width:180px; max-height:180px; border-radius:8px; margin:0 auto 12px; display:block;" onerror="this.style.display='none';">`
+        : '';
+
+    container.innerHTML = `
+        <div class="winner-card">
+            ${imgHtml}
+            <h3>🎯 ${game.name}</h3>
+            <p style="opacity:0.85; margin-top:6px;">Published ${game.yearPublished} • Owned by ${(game.owners||[]).join(', ')}</p>
+            <div class="stats-grid">
+                <div class="stat-item"><div class="stat-label">Players</div><div class="stat-value">${game.minPlayers}–${game.maxPlayers}</div></div>
+                <div class="stat-item"><div class="stat-label">Time</div><div class="stat-value">${game.playingTime} min</div></div>
+                <div class="stat-item"><div class="stat-label">Complexity</div><div class="stat-value">${game.complexity.toFixed(1)}/5</div></div>
+                <div class="stat-item"><div class="stat-label">Rating</div><div class="stat-value">${game.average.toFixed(1)}/10</div></div>
+                <div class="stat-item"><div class="stat-label">Promotions</div><div class="stat-value">👍 ${promotes}</div></div>
+            </div>
+        </div>
+        ${tiedCount > 1 ? `<p style="color:#666; font-size:13px; margin-top:10px;">Randomly chosen from ${tiedCount} tied games</p>` : ''}
+    `;
+}
+
+// ════════════════════════════════════════════════════════════════════
+// DUAL-RANGE SLIDER CLASS
+// ════════════════════════════════════════════════════════════════════
+class DualRange {
+    constructor(containerId, { min, max, step, minVal, maxVal, labelEl, fmt }) {
+        this.el = document.getElementById(containerId);
+        this.min = min; this.max = max; this.step = step;
+        this.vals = { min: minVal, max: maxVal };
+        this.labelEl = document.getElementById(labelEl);
+        this.fmt = fmt;
+
+        this.track = this.el.querySelector('.dual-range-track');
+        this.sel   = this.el.querySelector('.dual-range-selected');
+        this.tMin  = this.el.querySelector('.dual-range-thumb-min');
+        this.tMax  = this.el.querySelector('.dual-range-thumb-max');
+        this.dragging = null;
+
+        this.tMin.addEventListener('mousedown', e => this.start(e,'min'));
+        this.tMax.addEventListener('mousedown', e => this.start(e,'max'));
+        this.tMin.addEventListener('touchstart', e => this.start(e,'min'), {passive:false});
+        this.tMax.addEventListener('touchstart', e => this.start(e,'max'), {passive:false});
+        document.addEventListener('mousemove', e => this.move(e));
+        document.addEventListener('mouseup',   () => this.end());
+        document.addEventListener('touchmove', e => this.move(e), {passive:false});
+        document.addEventListener('touchend',  () => this.end());
+
+        this.render();
+    }
+    start(e, which) { e.preventDefault(); this.dragging = which; }
+    px(e) { return (e.touches ? e.touches[0] : e).clientX; }
+    move(e) {
+        if (!this.dragging) return;
+        e.preventDefault();
+        const rect = this.track.getBoundingClientRect();
+        let r = Math.max(0, Math.min(1, (this.px(e) - rect.left) / rect.width));
+        let raw = Math.round((this.min + r * (this.max - this.min)) / this.step) * this.step;
+        raw = Math.max(this.min, Math.min(this.max, raw));
+        if (this.dragging === 'min') this.vals.min = Math.max(this.min, Math.min(raw, this.vals.max - this.step));
+        else this.vals.max = Math.min(this.max, Math.max(raw, this.vals.min + this.step));
+        this.render();
+    }
+    end() { this.dragging = null; }
+    render() {
+        const range = this.max - this.min;
+        const minPct = ((this.vals.min - this.min) / range) * 100;
+        const maxPct = ((this.vals.max - this.min) / range) * 100;
+        this.tMin.style.left = minPct + '%';
+        this.tMax.style.left = maxPct + '%';
+        this.sel.style.left  = minPct + '%';
+        this.sel.style.width = (maxPct - minPct) + '%';
+        this.labelEl.textContent = this.fmt(this.vals.min, this.vals.max);
+    }
+    getMin() { return this.vals.min; }
+    getMax() { return this.vals.max; }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// BOOTSTRAP – on load, check session
+// ════════════════════════════════════════════════════════════════════
+(function() {
+    if (session && getUser(session.username)) {
+        goHome();
+    } else {
+        session = null; saveSession();
+        goToPage('page-login');
+    }
+})();
+</script>
+</body>
+</html>
