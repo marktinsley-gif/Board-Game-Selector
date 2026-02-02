@@ -431,6 +431,10 @@ button.ghost:hover { background:#667eea; color:white; }
     <h2>Select Participants</h2>
     <p class="subtitle">Choose who is playing and whose collections to include.</p>
     <div class="alert error" id="vp-error"></div>
+    
+    <label for="vote-name-input">Vote Name (optional)</label>
+    <input type="text" id="vote-name-input" placeholder="e.g. Friday Night Games, March 2026">
+    
     <div class="participant-grid" id="vp-cards"></div>
     <button onclick="vpContinue()">Continue to Filters</button>
     <button class="secondary" onclick="goBackToGroup()">Cancel</button>
@@ -510,6 +514,7 @@ button.ghost:hover { background:#667eea; color:white; }
     <div id="voting-list"></div>
     <button onclick="voteFinish()">See Suggested Game</button>
     <button class="secondary" onclick="goToPage('page-vote-filters')">Back to Filters</button>
+    <button class="danger" onclick="confirmDeleteVote()">Delete Vote</button>
   </div>
 </div>
 
@@ -527,6 +532,7 @@ button.ghost:hover { background:#667eea; color:white; }
     <button class="success" onclick="suggestAnother()">Suggest Another</button>
     <button class="secondary" onclick="goToPage('page-vote-voting')">Back to Voting</button>
     <button onclick="goBackToGroup()">Back to Group</button>
+    <button class="danger" onclick="confirmDeleteVote()">Delete Vote</button>
   </div>
 </div>
 
@@ -999,10 +1005,12 @@ function renderGroupVotes() {
         const summary = isActive
             ? `${gameCount} games • ${vote.participants.length} participants`
             : `Winner: ${vote.winner ? vote.winner.name : '—'}`;
+        
+        const voteTitle = vote.voteName ? vote.voteName : `Vote by ${vote.createdBy}`;
 
         div.innerHTML = `
             <div>
-                <div class="vc-title">Vote by ${vote.createdBy}</div>
+                <div class="vc-title">${voteTitle}</div>
                 <div class="vc-sub">${summary} • ${new Date(vote.createdAt).toLocaleDateString()}</div>
             </div>
             <div class="vc-badge ${isActive ? '' : 'completed'}">${isActive ? 'Active' : 'Completed'}</div>
@@ -1041,6 +1049,13 @@ async function loadCollectionCSVFrom(inputId) {
     try {
         const games = await parseCSV(file);
         if (games.length === 0) throw new Error('No owned games found in file');
+        
+        // Log image stats before saving
+        const gamesWithImages = games.filter(g => g.imageUrl).length;
+        console.log(`About to save ${games.length} games, ${gamesWithImages} have images`);
+        if (games.length > 0 && games.length <= 5) {
+            console.log('Sample games:', games.slice(0, 3).map(g => ({ name: g.name, imageUrl: g.imageUrl })));
+        }
         
         // Save to Firestore so other users can see collection
         const user = await fsGetUser(session.username);
@@ -1247,6 +1262,7 @@ function beginVoteFlow() {
         id: generateVoteId(),
         groupCode: activeGroupCode,
         createdBy: session.username,
+        voteName: '',
         participants: [],
         filters: {},
         filteredGames: [],
@@ -1345,6 +1361,11 @@ function syncPC(username, card) {
 
 async function vpContinue() {
     hideAlert('vp-error');
+    
+    // Capture optional vote name
+    const voteName = document.getElementById('vote-name-input').value.trim();
+    currentVote.voteName = voteName;
+    
     const participants = [];
     const gameMap = new Map();
 
@@ -1440,6 +1461,21 @@ async function saveVote() {
     delete toSave._allGames;
     activeGroup.votes[currentVote.id] = toSave;
     await fsSaveGroup(activeGroup);
+}
+
+function confirmDeleteVote() {
+    if (confirm('Are you sure you want to delete this vote? This cannot be undone.')) {
+        deleteVote();
+    }
+}
+
+async function deleteVote() {
+    showLoading(true);
+    activeGroup = await fsGetGroup(activeGroupCode);
+    delete activeGroup.votes[currentVote.id];
+    await fsSaveGroup(activeGroup);
+    showLoading(false);
+    goBackToGroup();
 }
 
 // ── Voting ──
