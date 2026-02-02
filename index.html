@@ -459,7 +459,7 @@ button.ghost:hover { background:#667eea; color:white; }
 
     <div class="checkbox-row" style="margin-top:10px; margin-bottom:20px;">
       <input type="checkbox" id="filter-best-players">
-      <label for="filter-best-players">Only games marked as "best" at this player count</label>
+      <label for="filter-best-players">Only include games marked as "best" at this player count</label>
     </div>
 
     <div class="slider-container">
@@ -1112,7 +1112,10 @@ async function parseCSV(file) {
           ratIdx=fc('rating'), avgIdx=fc('average','avgrating'), cwIdx=fc('avgweight','averageweight'),
           yrIdx=fc('yearpublished'), ownIdx=fc('own','owned'),
           imgIdx=fc('imageid','image'), typeIdx=fc('itemtype','type'),
-          bestPIdx=fc('bggbestplayers');
+          bestPIdx=fc('bggbestplayers','bestplayers','recommended players');
+    
+    console.log('CSV Headers:', headers);
+    console.log('bestPIdx column index:', bestPIdx);
 
     const games = [];
     for (let i = 1; i < lines.length; i++) {
@@ -1132,9 +1135,21 @@ async function parseCSV(file) {
         if (ownIdx >= 0 && col(ownIdx) !== '1') continue;
 
         const imgId = col(imgIdx);
-        const bestPlayers = col(bestPIdx) 
-            ? col(bestPIdx).split(',').map(p => parseInt(p.trim())).filter(p => !isNaN(p))
+        const bestPlayersRaw = col(bestPIdx);
+        const bestPlayers = bestPlayersRaw 
+            ? bestPlayersRaw.split(',').map(p => parseInt(p.trim())).filter(p => !isNaN(p))
             : [];
+        
+        // Debug logging for first 5 games
+        if (games.length < 5) {
+            console.log(`Game ${games.length + 1}: "${col(nameIdx)}"`, {
+                bestPlayersRaw: bestPlayersRaw,
+                bestPlayers: bestPlayers,
+                minPlayers: parseInt(col(minPIdx)),
+                maxPlayers: parseInt(col(maxPIdx))
+            });
+        }
+        
         games.push({
             id: col(idIdx) || i.toString(),
             name: col(nameIdx) || 'Unknown',
@@ -1382,6 +1397,9 @@ async function vfApply() {
     const cMin = sliders.complexity.getMin(), cMax = sliders.complexity.getMax();
     const rMin = sliders.rating.getMin(), rMax = sliders.rating.getMax();
 
+    console.log('Filter settings:', { players, bestOnly });
+    
+    let debugCount = 0;
     voteFilteredGames = (currentVote._allGames || []).filter(g => {
         if (noExp && g.itemType === 'expansion') return false;
         
@@ -1392,13 +1410,30 @@ async function vfApply() {
         // If "best only" is checked, also verify it's in the bestPlayers array
         if (bestOnly) {
             const hasBestPlayers = g.bestPlayers && g.bestPlayers.length > 0;
-            if (!hasBestPlayers || !g.bestPlayers.includes(players)) return false;
+            const isInBestPlayers = hasBestPlayers && g.bestPlayers.includes(players);
+            
+            // Debug first 3 games that meet player count
+            if (debugCount < 3) {
+                console.log(`Game: "${g.name}"`, {
+                    minPlayers: g.minPlayers,
+                    maxPlayers: g.maxPlayers,
+                    bestPlayers: g.bestPlayers,
+                    hasBestPlayers,
+                    isInBestPlayers,
+                    passes: isInBestPlayers
+                });
+                debugCount++;
+            }
+            
+            if (!isInBestPlayers) return false;
         }
         
         return g.playingTime >= tMin && g.playingTime <= tMax &&
                g.complexity >= cMin && g.complexity <= cMax &&
                g.average >= rMin && g.average <= rMax;
     });
+
+    console.log('Filtered games count:', voteFilteredGames.length);
 
     if (voteFilteredGames.length === 0) { showAlert('vf-error','No games match – try relaxing the filters'); return; }
 
