@@ -615,19 +615,14 @@ window.addEventListener('unhandledrejection', function(e) {
 });
 
 // ════════════════════════════════════════════════════════════════════
-// LOCAL STORAGE – session + game collections (per-device only)
+// LOCAL STORAGE – session only (per-device)
+// Collections are now stored in Firestore with user data
 // ════════════════════════════════════════════════════════════════════
 let session = null;
 try { session = JSON.parse(localStorage.getItem('bgg_session')); } catch(e) {}
 
 function saveSession() {
     try { localStorage.setItem('bgg_session', JSON.stringify(session)); } catch(e) {}
-}
-function getLocalGames(username) {
-    try { return JSON.parse(localStorage.getItem('bgg_games_' + username)) || []; } catch(e) { return []; }
-}
-function saveLocalGames(username, games) {
-    try { localStorage.setItem('bgg_games_' + username, JSON.stringify(games)); } catch(e) {}
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -735,6 +730,7 @@ async function doRegister() {
         displayName,
         passwordHash: simpleHash(password),
         groups: [],
+        games: [],
         createdAt: new Date().toISOString()
     });
     showLoading(false);
@@ -913,14 +909,14 @@ async function renderGroupMembers() {
     members.forEach(u => {
         if (!u) return;
         const isMe = u.username === session.username;
-        const localGames = getLocalGames(u.username);
+        const games = u.games || [];
         const div = document.createElement('div');
         div.className = 'list-item';
         div.id = 'member-' + u.username;
         div.innerHTML = `
             <div class="list-item-left">
                 <div class="item-title">${u.displayName} <span style="color:#999; font-size:12px;">(${u.username})</span>${isMe ? ' <span style="color:#667eea; font-size:11px; font-weight:600;">YOU</span>' : ''}</div>
-                <div class="item-sub">${localGames.length > 0 ? localGames.length + ' games in collection' : 'No collection loaded'}</div>
+                <div class="item-sub">${games.length > 0 ? games.length + ' games in collection' : 'No collection loaded'}</div>
             </div>
             <div id="member-actions-${u.username}">
                 ${!isMe ? `<button class="secondary" style="padding:5px 10px; font-size:13px; margin:0;" onclick="removeMember('${u.username}')">Remove</button>` : ''}
@@ -1040,14 +1036,19 @@ async function loadCollectionCSVFrom(inputId) {
     try {
         const games = await parseCSV(file);
         if (games.length === 0) throw new Error('No owned games found in file');
-        saveLocalGames(session.username, games);
+        
+        // Save to Firestore so other users can see collection
+        const user = await fsGetUser(session.username);
+        user.games = games;
+        await fsSaveUser(user);
+        
         showLoading(false);
 
         if (inputId === 'home-col-csv') {
             renderHomeCollection();
         } else if (inputId === 'reg-col-csv') {
             const el = document.getElementById('reg-collection-success');
-            el.textContent = `✓ Loaded ${games.length} games to your device!`;
+            el.textContent = `✓ Loaded ${games.length} games!`;
             el.style.display = 'block';
         } else {
             showAlert('collection-info', `Loaded ${games.length} games! You can continue or upload a different file.`);
@@ -1062,8 +1063,9 @@ async function loadCollectionCSVFrom(inputId) {
     input.value = '';
 }
 
-function renderHomeCollection() {
-    const games = getLocalGames(session.username);
+async function renderHomeCollection() {
+    const user = await fsGetUser(session.username);
+    const games = user?.games || [];
     const container = document.getElementById('home-collection-status');
     if (games.length > 0) {
         container.innerHTML = `<p style="color:#155724; background:#d4edda; border:2px solid #c3e6cb; border-radius:8px; padding:10px 14px; margin-bottom:12px; font-size:14px;">✓ <strong>${games.length} games</strong> in your collection. Upload a new file below to replace it.</p>`;
@@ -1147,8 +1149,9 @@ async function parseCSV(file) {
 let currentVote = null;
 let voteFilteredGames = [];
 
-function startNewVote() {
-    const myGames = getLocalGames(session.username);
+async function startNewVote() {
+    const user = await fsGetUser(session.username);
+    const myGames = user?.games || [];
     pendingVoteAction = { type: 'new', groupCode: activeGroupCode };
     if (myGames.length === 0) {
         goToPage('page-collection');
@@ -1199,22 +1202,27 @@ function openVote(voteId) {
 }
 
 // ── Participants ──
-function renderParticipantCards() {
+async function renderParticipantCards() {
     const container = document.getElementById('vp-cards');
     container.innerHTML = '';
 
-    activeGroup.members.forEach(username => {
-        const localGames = getLocalGames(username);
-        const hasGames = localGames.length > 0;
+    // Fetch all members to get their game collections
+    const members = await Promise.all(activeGroup.members.map(username => fsGetUser(username)));
+
+    members.forEach(u => {
+        if (!u) return;
+        const username = u.username;
+        const games = u.games || [];
+        const hasGames = games.length > 0;
         const div = document.createElement('div');
         div.className = 'participant-card';
         div.id = 'pc-' + username;
         div.innerHTML = `
             <div class="pc-row">
                 <input type="checkbox" id="pc-check-${username}">
-                <label for="pc-check-${username}" style="font-weight:600; color:#333;">${username}</label>
+                <label for="pc-check-${username}" style="font-weight:600; color:#333;">${u.displayName}</label>
             </div>
-            <div class="pc-sub">${hasGames ? localGames.length + ' games' : 'No collection'}</div>
+            <div class="pc-sub">${hasGames ? games.length + ' games' : 'No collection'}</div>
             ${hasGames ? `<div class="pc-row" style="margin-top:8px;">
                 <input type="checkbox" id="pc-games-${username}" disabled>
                 <label for="pc-games-${username}">Include their games</label>
@@ -1254,18 +1262,25 @@ function syncPC(username, card) {
     }
 }
 
-function vpContinue() {
+async function vpContinue() {
     hideAlert('vp-error');
     const participants = [];
     const gameMap = new Map();
 
-    activeGroup.members.forEach(username => {
+    // Fetch all users to get their collections
+    const members = await Promise.all(
+        activeGroup.members.map(username => fsGetUser(username))
+    );
+
+    for (const u of members) {
+        if (!u) continue;
+        const username = u.username;
         const cb = document.getElementById('pc-check-' + username);
-        if (!cb || !cb.checked) return;
+        if (!cb || !cb.checked) continue;
         participants.push(username);
         const gcb = document.getElementById('pc-games-' + username);
         if (gcb && gcb.checked) {
-            const games = getLocalGames(username);
+            const games = u.games || [];
             games.forEach(game => {
                 if (!gameMap.has(game.id)) {
                     gameMap.set(game.id, { ...game, owners: [username] });
@@ -1274,7 +1289,7 @@ function vpContinue() {
                 }
             });
         }
-    });
+    }
 
     if (participants.length === 0) { showAlert('vp-error','Select at least one participant'); return; }
 
