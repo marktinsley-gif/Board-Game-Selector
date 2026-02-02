@@ -457,6 +457,11 @@ button.ghost:hover { background:#667eea; color:white; }
     <label>Number of Players</label>
     <input type="number" id="filter-players" min="1" max="20" value="4" style="max-width:120px;">
 
+    <div class="checkbox-row" style="margin-top:10px; margin-bottom:20px;">
+      <input type="checkbox" id="filter-best-players">
+      <label for="filter-best-players">Only games marked as "best" at this player count</label>
+    </div>
+
     <div class="slider-container">
       <div class="slider-label"><label style="margin:0;">Playing Time (min)</label><span id="time-label">0 – 480 min</span></div>
       <div class="dual-range" id="dr-time">
@@ -1106,7 +1111,8 @@ async function parseCSV(file) {
           minPIdx=fc('minplayers'), maxPIdx=fc('maxplayers'), ptIdx=fc('playingtime'),
           ratIdx=fc('rating'), avgIdx=fc('average','avgrating'), cwIdx=fc('avgweight','averageweight'),
           yrIdx=fc('yearpublished'), ownIdx=fc('own','owned'),
-          imgIdx=fc('imageid','image'), typeIdx=fc('itemtype','type');
+          imgIdx=fc('imageid','image'), typeIdx=fc('itemtype','type'),
+          bestPIdx=fc('bggbestplayers');
 
     const games = [];
     for (let i = 1; i < lines.length; i++) {
@@ -1126,6 +1132,9 @@ async function parseCSV(file) {
         if (ownIdx >= 0 && col(ownIdx) !== '1') continue;
 
         const imgId = col(imgIdx);
+        const bestPlayers = col(bestPIdx) 
+            ? col(bestPIdx).split(',').map(p => parseInt(p.trim())).filter(p => !isNaN(p))
+            : [];
         games.push({
             id: col(idIdx) || i.toString(),
             name: col(nameIdx) || 'Unknown',
@@ -1137,10 +1146,61 @@ async function parseCSV(file) {
             complexity: parseFloat(col(cwIdx)) || 2.5,
             yearPublished: parseInt(col(yrIdx)) || 2000,
             itemType: col(typeIdx) || 'standalone',
-            imageUrl: imgId ? `https://boardgamegeek.com/image/${imgId}` : null
+            bestPlayers: bestPlayers,
+            imageUrl: imgId ? `https://cf.geekdo-images.com/thumb/img/${imgId}` : null
         });
     }
-    return games.filter(g => g.name !== 'Unknown');
+    
+    const validGames = games.filter(g => g.name !== 'Unknown');
+    
+    // Fetch images from BGG API for games without imageUrl
+    const gamesNeedingImages = validGames.filter(g => !g.imageUrl && g.id);
+    if (gamesNeedingImages.length > 0) {
+        await fetchBGGImages(gamesNeedingImages);
+    }
+    
+    return validGames;
+}
+
+// Fetch images from BGG XML API for games missing imageUrl
+async function fetchBGGImages(games) {
+    // BGG API allows batching up to 20 IDs per request
+    const BATCH_SIZE = 20;
+    const DELAY = 1000; // 1 second between batches to respect rate limits
+    
+    for (let i = 0; i < games.length; i += BATCH_SIZE) {
+        const batch = games.slice(i, i + BATCH_SIZE);
+        const ids = batch.map(g => g.id).join(',');
+        
+        try {
+            const response = await fetch(`https://boardgamegeek.com/xmlapi2/thing?id=${ids}&type=boardgame`);
+            if (!response.ok) continue;
+            
+            const text = await response.text();
+            const parser = new DOMParser();
+            const xml = parser.parseFromString(text, 'text/xml');
+            
+            batch.forEach(game => {
+                const item = xml.querySelector(`item[id="${game.id}"]`);
+                if (item) {
+                    const thumbnail = item.querySelector('thumbnail');
+                    const image = item.querySelector('image');
+                    if (thumbnail) {
+                        game.imageUrl = thumbnail.textContent;
+                    } else if (image) {
+                        game.imageUrl = image.textContent;
+                    }
+                }
+            });
+            
+            // Wait between batches
+            if (i + BATCH_SIZE < games.length) {
+                await new Promise(resolve => setTimeout(resolve, DELAY));
+            }
+        } catch (e) {
+            console.error('Failed to fetch images for batch:', e);
+        }
+    }
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -1317,14 +1377,25 @@ async function vfApply() {
     hideAlert('vf-error');
     const players = parseInt(document.getElementById('filter-players').value) || 4;
     const noExp = document.getElementById('filter-no-expansions').checked;
+    const bestOnly = document.getElementById('filter-best-players').checked;
     const tMin = sliders.time.getMin(), tMax = sliders.time.getMax();
     const cMin = sliders.complexity.getMin(), cMax = sliders.complexity.getMax();
     const rMin = sliders.rating.getMin(), rMax = sliders.rating.getMax();
 
     voteFilteredGames = (currentVote._allGames || []).filter(g => {
         if (noExp && g.itemType === 'expansion') return false;
-        return g.minPlayers <= players && g.maxPlayers >= players &&
-               g.playingTime >= tMin && g.playingTime <= tMax &&
+        
+        // Player count check
+        const playerCountOk = g.minPlayers <= players && g.maxPlayers >= players;
+        if (!playerCountOk) return false;
+        
+        // If "best only" is checked, also verify it's in the bestPlayers array
+        if (bestOnly) {
+            const hasBestPlayers = g.bestPlayers && g.bestPlayers.length > 0;
+            if (!hasBestPlayers || !g.bestPlayers.includes(players)) return false;
+        }
+        
+        return g.playingTime >= tMin && g.playingTime <= tMax &&
                g.complexity >= cMin && g.complexity <= cMax &&
                g.average >= rMin && g.average <= rMax;
     });
@@ -1332,7 +1403,7 @@ async function vfApply() {
     if (voteFilteredGames.length === 0) { showAlert('vf-error','No games match – try relaxing the filters'); return; }
 
     currentVote.filteredGames = voteFilteredGames;
-    currentVote.filters = { players, noExp, tMin, tMax, cMin, cMax, rMin, rMax };
+    currentVote.filters = { players, noExp, bestOnly, tMin, tMax, cMin, cMax, rMin, rMax };
     showLoading(true);
     await saveVote();
     showLoading(false);
