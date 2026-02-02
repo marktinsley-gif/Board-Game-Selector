@@ -1136,17 +1136,32 @@ async function parseCSV(file) {
 
         const imgId = col(imgIdx);
         const bestPlayersRaw = col(bestPIdx);
-        const bestPlayers = bestPlayersRaw 
-            ? bestPlayersRaw.split(',').map(p => parseInt(p.trim())).filter(p => !isNaN(p))
-            : [];
         
-        // Debug logging for first 5 games
-        if (games.length < 5) {
+        // Parse bestPlayers - handle both quoted comma-separated and space-separated
+        let bestPlayers = [];
+        if (bestPlayersRaw) {
+            // Try splitting by comma first
+            const byComma = bestPlayersRaw.split(',').map(p => parseInt(p.trim())).filter(p => !isNaN(p));
+            if (byComma.length > 0) {
+                bestPlayers = byComma;
+            } else {
+                // Try splitting by space as fallback
+                const bySpace = bestPlayersRaw.split(/\s+/).map(p => parseInt(p.trim())).filter(p => !isNaN(p));
+                bestPlayers = bySpace;
+            }
+        }
+        
+        // Debug logging for first 10 games
+        if (games.length < 10) {
             console.log(`Game ${games.length + 1}: "${col(nameIdx)}"`, {
-                bestPlayersRaw: bestPlayersRaw,
+                bestPlayersRaw: JSON.stringify(bestPlayersRaw),
+                bestPlayersRawLength: bestPlayersRaw ? bestPlayersRaw.length : 0,
                 bestPlayers: bestPlayers,
                 minPlayers: parseInt(col(minPIdx)),
-                maxPlayers: parseInt(col(maxPIdx))
+                maxPlayers: parseInt(col(maxPIdx)),
+                valuesArrayLength: vals.length,
+                bestPIdx: bestPIdx,
+                valueAtBestPIdx: bestPIdx >= 0 ? vals[bestPIdx] : 'N/A'
             });
         }
         
@@ -1167,6 +1182,14 @@ async function parseCSV(file) {
     }
     
     const validGames = games.filter(g => g.name !== 'Unknown');
+    
+    // Summary stats
+    const gamesWithBestPlayers = validGames.filter(g => g.bestPlayers && g.bestPlayers.length > 0);
+    console.log('=== PARSE SUMMARY ===');
+    console.log(`Total games: ${validGames.length}`);
+    console.log(`Games with bestPlayers data: ${gamesWithBestPlayers.length}`);
+    console.log(`Sample of bestPlayers values:`, gamesWithBestPlayers.slice(0, 5).map(g => ({ name: g.name, bestPlayers: g.bestPlayers })));
+    console.log('=====================');
     
     // Fetch images from BGG API for games without imageUrl
     const gamesNeedingImages = validGames.filter(g => !g.imageUrl && g.id);
