@@ -1181,15 +1181,57 @@ async function parseCSV(file) {
     
     const validGames = games.filter(g => g.name !== 'Unknown');
     
-    // For games without imageUrl, use BGG's direct image URL pattern
+    // For games without imageUrl, use a BGG API service to get thumbnails
     validGames.forEach(g => {
         if (!g.imageUrl && g.id) {
-            // Use BGG's thumbnail URL pattern - this redirects to the actual image
-            g.imageUrl = `https://boardgamegeek.com/image/${g.id}/thumb`;
+            // Use bgg-json API which provides image URLs without authentication
+            g.imageUrl = `https://bgg-json.azurewebsites.net/thing/${g.id}`;
+            g.needsImageFetch = true; // Mark that we need to fetch the actual image URL
         }
     });
     
+    // Fetch actual image URLs for games that need it
+    const needsFetch = validGames.filter(g => g.needsImageFetch);
+    if (needsFetch.length > 0) {
+        console.log(`Fetching image URLs for ${needsFetch.length} games...`);
+        await fetchImageUrls(needsFetch);
+    }
+    
     return validGames;
+}
+
+// Fetch actual image URLs from bgg-json API
+async function fetchImageUrls(games) {
+    const BATCH_SIZE = 10;
+    const DELAY = 500;
+    
+    for (let i = 0; i < games.length; i += BATCH_SIZE) {
+        const batch = games.slice(i, i + BATCH_SIZE);
+        
+        await Promise.all(batch.map(async game => {
+            try {
+                const response = await fetch(`https://bgg-json.azurewebsites.net/thing/${game.id}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.thumbnail) {
+                        game.imageUrl = data.thumbnail;
+                    } else if (data.image) {
+                        game.imageUrl = data.image;
+                    }
+                }
+            } catch (e) {
+                console.error(`Failed to fetch image for ${game.name}:`, e);
+            }
+            delete game.needsImageFetch;
+        }));
+        
+        if (i + BATCH_SIZE < games.length) {
+            await new Promise(resolve => setTimeout(resolve, DELAY));
+        }
+    }
+    
+    const successCount = games.filter(g => g.imageUrl && !g.imageUrl.includes('bgg-json')).length;
+    console.log(`Successfully fetched ${successCount} of ${games.length} image URLs`);
 }
 
 // ════════════════════════════════════════════════════════════════════
