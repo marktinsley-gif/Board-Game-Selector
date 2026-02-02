@@ -1113,9 +1113,6 @@ async function parseCSV(file) {
           yrIdx=fc('yearpublished'), ownIdx=fc('own','owned'),
           imgIdx=fc('imageid','image'), typeIdx=fc('itemtype','type'),
           bestPIdx=fc('bggbestplayers','bestplayers','recommended players');
-    
-    console.log('CSV Headers:', headers);
-    console.log('bestPIdx column index:', bestPIdx);
 
     const games = [];
     for (let i = 1; i < lines.length; i++) {
@@ -1151,20 +1148,6 @@ async function parseCSV(file) {
             }
         }
         
-        // Debug logging for first 10 games
-        if (games.length < 10) {
-            console.log(`Game ${games.length + 1}: "${col(nameIdx)}"`, {
-                bestPlayersRaw: JSON.stringify(bestPlayersRaw),
-                bestPlayersRawLength: bestPlayersRaw ? bestPlayersRaw.length : 0,
-                bestPlayers: bestPlayers,
-                minPlayers: parseInt(col(minPIdx)),
-                maxPlayers: parseInt(col(maxPIdx)),
-                valuesArrayLength: vals.length,
-                bestPIdx: bestPIdx,
-                valueAtBestPIdx: bestPIdx >= 0 ? vals[bestPIdx] : 'N/A'
-            });
-        }
-        
         games.push({
             id: col(idIdx) || i.toString(),
             name: col(nameIdx) || 'Unknown',
@@ -1182,14 +1165,6 @@ async function parseCSV(file) {
     }
     
     const validGames = games.filter(g => g.name !== 'Unknown');
-    
-    // Summary stats
-    const gamesWithBestPlayers = validGames.filter(g => g.bestPlayers && g.bestPlayers.length > 0);
-    console.log('=== PARSE SUMMARY ===');
-    console.log(`Total games: ${validGames.length}`);
-    console.log(`Games with bestPlayers data: ${gamesWithBestPlayers.length}`);
-    console.log(`Sample of bestPlayers values:`, gamesWithBestPlayers.slice(0, 5).map(g => ({ name: g.name, bestPlayers: g.bestPlayers })));
-    console.log('=====================');
     
     // Fetch images from BGG API for games without imageUrl
     const gamesNeedingImages = validGames.filter(g => !g.imageUrl && g.id);
@@ -1420,9 +1395,6 @@ async function vfApply() {
     const cMin = sliders.complexity.getMin(), cMax = sliders.complexity.getMax();
     const rMin = sliders.rating.getMin(), rMax = sliders.rating.getMax();
 
-    console.log('Filter settings:', { players, bestOnly });
-    
-    let debugCount = 0;
     voteFilteredGames = (currentVote._allGames || []).filter(g => {
         if (noExp && g.itemType === 'expansion') return false;
         
@@ -1434,20 +1406,6 @@ async function vfApply() {
         if (bestOnly) {
             const hasBestPlayers = g.bestPlayers && g.bestPlayers.length > 0;
             const isInBestPlayers = hasBestPlayers && g.bestPlayers.includes(players);
-            
-            // Debug first 3 games that meet player count
-            if (debugCount < 3) {
-                console.log(`Game: "${g.name}"`, {
-                    minPlayers: g.minPlayers,
-                    maxPlayers: g.maxPlayers,
-                    bestPlayers: g.bestPlayers,
-                    hasBestPlayers,
-                    isInBestPlayers,
-                    passes: isInBestPlayers
-                });
-                debugCount++;
-            }
-            
             if (!isInBestPlayers) return false;
         }
         
@@ -1455,8 +1413,6 @@ async function vfApply() {
                g.complexity >= cMin && g.complexity <= cMax &&
                g.average >= rMin && g.average <= rMax;
     });
-
-    console.log('Filtered games count:', voteFilteredGames.length);
 
     if (voteFilteredGames.length === 0) { showAlert('vf-error','No games match – try relaxing the filters'); return; }
 
