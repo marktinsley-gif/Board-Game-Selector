@@ -1436,6 +1436,15 @@ function renderVotingList() {
     const container = document.getElementById('voting-list');
     const hideVetoed = document.getElementById('vote-hide-vetoed').checked;
     const votes = currentVote.votes || {};
+    
+    // Debug: log first 3 games to see their imageUrl values
+    if (voteFilteredGames.length > 0) {
+        console.log('First 3 games in vote:', voteFilteredGames.slice(0, 3).map(g => ({ 
+            name: g.name, 
+            imageUrl: g.imageUrl,
+            hasImageUrl: !!g.imageUrl 
+        })));
+    }
 
     const scored = voteFilteredGames.map(game => {
         const gv = votes[game.id] || {};
