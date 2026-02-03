@@ -661,9 +661,14 @@ function simpleHash(str) {
 // ════════════════════════════════════════════════════════════════════
 // UI HELPERS
 // ════════════════════════════════════════════════════════════════════
-function goToPage(id) {
+function goToPage(id, skipHistory) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.getElementById(id).classList.add('active');
+    
+    // Push to browser history unless skipHistory is true (used for popstate)
+    if (!skipHistory) {
+        history.pushState({ page: id }, '', '#' + id);
+    }
 }
 function showAlert(id, msg) {
     const el = document.getElementById(id);
@@ -1673,6 +1678,13 @@ class DualRange {
     }
     bindTab('tab-login', 'login');
     bindTab('tab-register', 'register');
+
+    // Handle browser back/forward buttons
+    window.addEventListener('popstate', function(event) {
+        if (event.state && event.state.page) {
+            goToPage(event.state.page, true);
+        }
+    });
 
     // Route based on session
     if (session && session.username) {
