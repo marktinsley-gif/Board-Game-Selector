@@ -519,6 +519,7 @@ button.ghost:hover { background:#667eea; color:white; }
     <div id="voting-list"></div>
     <button onclick="voteFinish()">See Suggested Game</button>
     <button class="secondary" onclick="goToPage('page-vote-filters')">Back to Filters</button>
+    <button class="secondary" onclick="goBackToGroup()">Back to Group</button>
     <button class="danger" onclick="confirmDeleteVote()">Delete Vote</button>
   </div>
 </div>
@@ -1542,6 +1543,11 @@ async function castVote(gameId, vote) {
 
 // ── Result ──
 async function voteFinish() {
+    // Confirm before completing the vote
+    if (!confirm('This will mark the vote as complete for all participants. Are you sure you want to see the suggested game?')) {
+        return;
+    }
+    
     const votes = currentVote.votes || {};
     const scored = voteFilteredGames.map(game => {
         const gv = votes[game.id] || {};
