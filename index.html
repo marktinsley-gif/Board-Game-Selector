@@ -460,6 +460,27 @@ button.ghost:hover { background:#667eea; color:white; }
 
     <label>Number of Players</label>
     <input type="number" id="filter-players" min="1" max="20" value="4" style="max-width:120px;">
+    
+    <div class="checkbox-row" style="margin-top:8px; margin-bottom:12px;">
+      <input type="checkbox" id="filter-player-range" onchange="togglePlayerCountRange()">
+      <label for="filter-player-range" style="font-size:13px; color:#666;">Use player count range (uncertain player count)</label>
+    </div>
+    
+    <div id="player-range-container" style="display:none; margin-bottom:20px;">
+      <div class="slider-container" style="margin-bottom:12px;">
+        <div class="slider-label"><label style="margin:0;">Player Count Range</label><span id="player-range-label">2 – 6</span></div>
+        <div class="dual-range" id="dr-players">
+          <div class="dual-range-track"><div class="dual-range-selected"></div></div>
+          <div class="dual-range-thumb dual-range-thumb-min"></div>
+          <div class="dual-range-thumb dual-range-thumb-max"></div>
+        </div>
+      </div>
+      
+      <div class="checkbox-row" style="margin-top:0px; margin-bottom:8px;">
+        <input type="checkbox" id="filter-all-player-counts">
+        <label for="filter-all-player-counts" style="font-size:13px;">Must work at ALL player counts in range</label>
+      </div>
+    </div>
 
     <div class="checkbox-row" style="margin-top:10px; margin-bottom:8px;">
       <input type="checkbox" id="filter-rec-players">
@@ -1377,11 +1398,24 @@ function initSliders() {
     sliders.time = new DualRange('dr-time', { min:0, max:480, step:15, minVal:0, maxVal:480, labelEl:'time-label', fmt: (a,b) => a+' – '+b+' min' });
     sliders.complexity = new DualRange('dr-complexity', { min:1, max:5, step:0.1, minVal:1, maxVal:5, labelEl:'complexity-label', fmt: (a,b) => a.toFixed(1)+' – '+b.toFixed(1) });
     sliders.rating = new DualRange('dr-rating', { min:1, max:10, step:0.1, minVal:1, maxVal:10, labelEl:'rating-label', fmt: (a,b) => a.toFixed(1)+' – '+b.toFixed(1) });
+    sliders.playerCount = new DualRange('dr-players', { min:1, max:20, step:1, minVal:2, maxVal:6, labelEl:'player-range-label', fmt: (a,b) => a+' – '+b });
+}
+
+function togglePlayerCountRange() {
+    const useRange = document.getElementById('filter-player-range').checked;
+    document.getElementById('player-range-container').style.display = useRange ? 'block' : 'none';
+    document.getElementById('filter-players').style.display = useRange ? 'none' : 'block';
 }
 
 async function vfApply() {
     hideAlert('vf-error');
+    
+    const useRange = document.getElementById('filter-player-range').checked;
     const players = parseInt(document.getElementById('filter-players').value) || 4;
+    const playerMin = sliders.playerCount.getMin();
+    const playerMax = sliders.playerCount.getMax();
+    const allPlayerCounts = document.getElementById('filter-all-player-counts').checked;
+    
     const noExp = document.getElementById('filter-no-expansions').checked;
     const recOnly = document.getElementById('filter-rec-players').checked;
     const bestOnly = document.getElementById('filter-best-players').checked;
@@ -1393,21 +1427,76 @@ async function vfApply() {
         if (noExp && g.itemType === 'expansion') return false;
         
         // Player count check
-        const playerCountOk = g.minPlayers <= players && g.maxPlayers >= players;
-        if (!playerCountOk) return false;
+        let playerCountOk = false;
         
-        // If "recommended only" is checked, verify it's in the recPlayers array
-        if (recOnly) {
-            const hasRecPlayers = g.recPlayers && g.recPlayers.length > 0;
-            const isInRecPlayers = hasRecPlayers && g.recPlayers.includes(players);
-            if (!isInRecPlayers) return false;
+        if (useRange) {
+            // Range mode
+            if (allPlayerCounts) {
+                // Must work at ALL player counts in range
+                playerCountOk = g.minPlayers <= playerMin && g.maxPlayers >= playerMax;
+            } else {
+                // Must work at AT LEAST ONE player count in range
+                playerCountOk = !(g.maxPlayers < playerMin || g.minPlayers > playerMax);
+            }
+        } else {
+            // Single player count mode
+            playerCountOk = g.minPlayers <= players && g.maxPlayers >= players;
         }
         
-        // If "best only" is checked, also verify it's in the bestPlayers array
-        if (bestOnly) {
-            const hasBestPlayers = g.bestPlayers && g.bestPlayers.length > 0;
-            const isInBestPlayers = hasBestPlayers && g.bestPlayers.includes(players);
-            if (!isInBestPlayers) return false;
+        if (!playerCountOk) return false;
+        
+        // Recommended/Best player count checks
+        if (recOnly || bestOnly) {
+            if (useRange) {
+                // Range mode
+                const playerCounts = [];
+                for (let p = playerMin; p <= playerMax; p++) {
+                    playerCounts.push(p);
+                }
+                
+                if (recOnly) {
+                    const hasRecPlayers = g.recPlayers && g.recPlayers.length > 0;
+                    if (!hasRecPlayers) return false;
+                    
+                    if (allPlayerCounts) {
+                        // Must be recommended at ALL player counts in range
+                        const allRecommended = playerCounts.every(p => g.recPlayers.includes(p));
+                        if (!allRecommended) return false;
+                    } else {
+                        // Must be recommended at AT LEAST ONE player count in range
+                        const anyRecommended = playerCounts.some(p => g.recPlayers.includes(p));
+                        if (!anyRecommended) return false;
+                    }
+                }
+                
+                if (bestOnly) {
+                    const hasBestPlayers = g.bestPlayers && g.bestPlayers.length > 0;
+                    if (!hasBestPlayers) return false;
+                    
+                    if (allPlayerCounts) {
+                        // Must be best at ALL player counts in range
+                        const allBest = playerCounts.every(p => g.bestPlayers.includes(p));
+                        if (!allBest) return false;
+                    } else {
+                        // Must be best at AT LEAST ONE player count in range
+                        const anyBest = playerCounts.some(p => g.bestPlayers.includes(p));
+                        if (!anyBest) return false;
+                    }
+                }
+            } else {
+                // Single player count mode
+                if (recOnly) {
+                    const hasRecPlayers = g.recPlayers && g.recPlayers.length > 0;
+                    const isInRecPlayers = hasRecPlayers && g.recPlayers.includes(players);
+                    if (!isInRecPlayers) return false;
+                }
+                
+                if (bestOnly) {
+                    const hasBestPlayers = g.bestPlayers && g.bestPlayers.length > 0;
+                    const isInBestPlayers = hasBestPlayers && g.bestPlayers.includes(players);
+                    if (!isInBestPlayers) return false;
+                }
+            }
         }
         
         return g.playingTime >= tMin && g.playingTime <= tMax &&
@@ -1418,7 +1507,22 @@ async function vfApply() {
     if (voteFilteredGames.length === 0) { showAlert('vf-error','No games match – try relaxing the filters'); return; }
 
     currentVote.filteredGames = voteFilteredGames;
-    currentVote.filters = { players, noExp, recOnly, bestOnly, tMin, tMax, cMin, cMax, rMin, rMax };
+    currentVote.filters = { 
+        players, 
+        useRange, 
+        playerMin, 
+        playerMax, 
+        allPlayerCounts,
+        noExp, 
+        recOnly, 
+        bestOnly, 
+        tMin, 
+        tMax, 
+        cMin, 
+        cMax, 
+        rMin, 
+        rMax 
+    };
     showLoading(true);
     await saveVote();
     showLoading(false);
