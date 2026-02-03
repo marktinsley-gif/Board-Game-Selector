@@ -1050,13 +1050,6 @@ async function loadCollectionCSVFrom(inputId) {
         const games = await parseCSV(file);
         if (games.length === 0) throw new Error('No owned games found in file');
         
-        // Log image stats before saving
-        const gamesWithImages = games.filter(g => g.imageUrl).length;
-        console.log(`About to save ${games.length} games, ${gamesWithImages} have images`);
-        if (games.length > 0 && games.length <= 5) {
-            console.log('Sample games:', games.slice(0, 3).map(g => ({ name: g.name, imageUrl: g.imageUrl })));
-        }
-        
         // Save to Firestore so other users can see collection
         const user = await fsGetUser(session.username);
         user.games = games;
@@ -1181,49 +1174,7 @@ async function parseCSV(file) {
     
     const validGames = games.filter(g => g.name !== 'Unknown');
     
-    // Fetch image URLs from API for games without images
-    const needsFetch = validGames.filter(g => !g.imageUrl && g.id);
-    if (needsFetch.length > 0) {
-        console.log(`Fetching image URLs for ${needsFetch.length} games from BGG API...`);
-        await fetchImageUrls(needsFetch);
-    }
-    
     return validGames;
-}
-
-// Fetch actual image URLs from bgg-json API
-async function fetchImageUrls(games) {
-    const BATCH_SIZE = 10;
-    const DELAY = 500;
-    
-    for (let i = 0; i < games.length; i += BATCH_SIZE) {
-        const batch = games.slice(i, i + BATCH_SIZE);
-        
-        console.log(`Fetching batch ${Math.floor(i/BATCH_SIZE) + 1}/${Math.ceil(games.length/BATCH_SIZE)}...`);
-        
-        await Promise.all(batch.map(async game => {
-            try {
-                const response = await fetch(`https://bgg-json.azurewebsites.net/thing/${game.id}`);
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.thumbnail) {
-                        game.imageUrl = data.thumbnail;
-                    } else if (data.image) {
-                        game.imageUrl = data.image;
-                    }
-                }
-            } catch (e) {
-                console.error(`Failed to fetch image for ${game.name}:`, e);
-            }
-        }));
-        
-        if (i + BATCH_SIZE < games.length) {
-            await new Promise(resolve => setTimeout(resolve, DELAY));
-        }
-    }
-    
-    const successCount = games.filter(g => g.imageUrl).length;
-    console.log(`Successfully fetched ${successCount} of ${games.length} image URLs`);
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -1466,19 +1417,32 @@ async function deleteVote() {
 }
 
 // ── Voting ──
+function getGameInitials(gameName) {
+    // Remove common prefixes and clean the name
+    const cleaned = gameName
+        .replace(/^(The |A |An )/i, '')
+        .replace(/[^a-zA-Z0-9\s]/g, '')
+        .trim();
+    
+    const words = cleaned.split(/\s+/).filter(w => w.length > 0);
+    
+    if (words.length === 0) return '??';
+    if (words.length === 1) {
+        // Single word - take first 2 letters
+        return words[0].substring(0, 2).toUpperCase();
+    }
+    
+    // Multiple words - take first letter of first 2-3 words
+    return words.slice(0, Math.min(3, words.length))
+        .map(w => w[0])
+        .join('')
+        .toUpperCase();
+}
+
 function renderVotingList() {
     const container = document.getElementById('voting-list');
     const hideVetoed = document.getElementById('vote-hide-vetoed').checked;
     const votes = currentVote.votes || {};
-    
-    // Debug: log first 3 games to see their imageUrl values
-    if (voteFilteredGames.length > 0) {
-        console.log('First 3 games in vote:', voteFilteredGames.slice(0, 3).map(g => ({ 
-            name: g.name, 
-            imageUrl: g.imageUrl,
-            hasImageUrl: !!g.imageUrl 
-        })));
-    }
 
     const scored = voteFilteredGames.map(game => {
         const gv = votes[game.id] || {};
@@ -1510,10 +1474,7 @@ function renderVotingList() {
             voteTags = `<div class="game-vote-summary">${tags.join('')}</div>`;
         }
 
-        const imgHtml = game.imageUrl
-            ? `<img src="${game.imageUrl}" alt="${game.name}" class="game-image" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">`+
-              `<div class="game-image-placeholder" style="display:none;">🎲</div>`
-            : `<div class="game-image-placeholder">🎲</div>`;
+        const imgHtml = `<div class="game-image-placeholder">${getGameInitials(game.name)}</div>`;
 
         div.innerHTML = `
             ${imgHtml}
@@ -1590,9 +1551,7 @@ function renderResultPage(game, vote, tiedCount) {
     const gv = (vote.votes || {})[game.id] || {};
     const promotes = Object.values(gv).filter(v => v === 'promote').length;
 
-    const imgHtml = game.imageUrl
-        ? `<img src="${game.imageUrl}" alt="${game.name}" style="max-width:180px; max-height:180px; border-radius:8px; margin:0 auto 12px; display:block;" onerror="this.style.display='none';">`
-        : '';
+    const imgHtml = `<div style="width:180px; height:180px; background:linear-gradient(135deg,#667eea,#764ba2); border-radius:12px; display:flex; align-items:center; justify-content:center; color:white; font-size:64px; font-weight:700; margin:0 auto 16px; box-shadow:0 4px 12px rgba(0,0,0,0.15);">${getGameInitials(game.name)}</div>`;
 
     container.innerHTML = `
         <div class="winner-card">
