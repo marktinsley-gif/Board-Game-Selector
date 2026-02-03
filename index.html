@@ -1181,19 +1181,10 @@ async function parseCSV(file) {
     
     const validGames = games.filter(g => g.name !== 'Unknown');
     
-    // For games without imageUrl, use a BGG API service to get thumbnails
-    validGames.forEach(g => {
-        if (!g.imageUrl && g.id) {
-            // Use bgg-json API which provides image URLs without authentication
-            g.imageUrl = `https://bgg-json.azurewebsites.net/thing/${g.id}`;
-            g.needsImageFetch = true; // Mark that we need to fetch the actual image URL
-        }
-    });
-    
-    // Fetch actual image URLs for games that need it
-    const needsFetch = validGames.filter(g => g.needsImageFetch);
+    // Fetch image URLs from API for games without images
+    const needsFetch = validGames.filter(g => !g.imageUrl && g.id);
     if (needsFetch.length > 0) {
-        console.log(`Fetching image URLs for ${needsFetch.length} games...`);
+        console.log(`Fetching image URLs for ${needsFetch.length} games from BGG API...`);
         await fetchImageUrls(needsFetch);
     }
     
@@ -1207,6 +1198,8 @@ async function fetchImageUrls(games) {
     
     for (let i = 0; i < games.length; i += BATCH_SIZE) {
         const batch = games.slice(i, i + BATCH_SIZE);
+        
+        console.log(`Fetching batch ${Math.floor(i/BATCH_SIZE) + 1}/${Math.ceil(games.length/BATCH_SIZE)}...`);
         
         await Promise.all(batch.map(async game => {
             try {
@@ -1222,7 +1215,6 @@ async function fetchImageUrls(games) {
             } catch (e) {
                 console.error(`Failed to fetch image for ${game.name}:`, e);
             }
-            delete game.needsImageFetch;
         }));
         
         if (i + BATCH_SIZE < games.length) {
@@ -1230,7 +1222,7 @@ async function fetchImageUrls(games) {
         }
     }
     
-    const successCount = games.filter(g => g.imageUrl && !g.imageUrl.includes('bgg-json')).length;
+    const successCount = games.filter(g => g.imageUrl).length;
     console.log(`Successfully fetched ${successCount} of ${games.length} image URLs`);
 }
 
