@@ -1508,11 +1508,13 @@ function renderVotingList() {
         }
 
         const imgHtml = `<div class="game-image-placeholder">${getGameInitials(game.name)}</div>`;
+        
+        const bggUrl = `https://boardgamegeek.com/boardgame/${game.id}`;
 
         div.innerHTML = `
             ${imgHtml}
             <div class="game-info">
-                <div class="game-name">${game.name} (${game.yearPublished})</div>
+                <div class="game-name"><a href="${bggUrl}" target="_blank" rel="noopener noreferrer" style="color:#667eea; text-decoration:none; font-weight:600;">${game.name}</a> (${game.yearPublished})</div>
                 <div class="game-details">${game.minPlayers}–${game.maxPlayers} players • ${game.playingTime} min • Complexity ${game.complexity.toFixed(1)} • Rating ${game.average.toFixed(1)}</div>
                 <div class="game-owners">Owned by: ${(game.owners||[]).join(', ')}</div>
                 ${voteTags}
@@ -1585,11 +1587,13 @@ function renderResultPage(game, vote, tiedCount) {
     const promotes = Object.values(gv).filter(v => v === 'promote').length;
 
     const imgHtml = `<div style="width:180px; height:180px; background:linear-gradient(135deg,#667eea,#764ba2); border-radius:12px; display:flex; align-items:center; justify-content:center; color:white; font-size:64px; font-weight:700; margin:0 auto 16px; box-shadow:0 4px 12px rgba(0,0,0,0.15);">${getGameInitials(game.name)}</div>`;
+    
+    const bggUrl = `https://boardgamegeek.com/boardgame/${game.id}`;
 
     container.innerHTML = `
         <div class="winner-card">
             ${imgHtml}
-            <h3>🎯 ${game.name}</h3>
+            <h3>🎯 <a href="${bggUrl}" target="_blank" rel="noopener noreferrer" style="color:white; text-decoration:underline;">${game.name}</a></h3>
             <p style="opacity:0.85; margin-top:6px;">Published ${game.yearPublished} • Owned by ${(game.owners||[]).join(', ')}</p>
             <div class="stats-grid">
                 <div class="stat-item"><div class="stat-label">Players</div><div class="stat-value">${game.minPlayers}–${game.maxPlayers}</div></div>
