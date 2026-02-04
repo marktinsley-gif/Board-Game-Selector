@@ -88,7 +88,7 @@ button.ghost:hover { background:#667eea; color:white; }
 .group-card {
     background:#f8f9fa; border:2px solid #e0e0e0; border-radius:10px;
     padding:18px; margin-bottom:10px; cursor:pointer; transition:all 0.2s;
-    display:flex; justify-content:space-between; align-items:center;
+    display:flex; justify-content:space-between; align-items:center; gap:14px;
 }
 .group-card:hover { border-color:#667eea; background:#f0f4ff; }
 .group-card .gc-title { font-weight:700; color:#333; font-size:16px; }
@@ -371,7 +371,7 @@ button.ghost:hover { background:#667eea; color:white; }
   <div class="card">
     <div class="topbar">
       <div class="topbar-left">
-        <span class="logo" onclick="goHome()">🎲</span>
+        <span id="group-icon-header" class="logo" onclick="goHome()">🎲</span>
         <span id="group-header-name" style="font-weight:700; color:#333; font-size:18px;"></span>
       </div>
       <button class="secondary" onclick="doLogout()">Log Out</button>
@@ -404,8 +404,40 @@ button.ghost:hover { background:#667eea; color:white; }
 
     <div class="section">
       <button onclick="goHome()">🏠 Back to Home</button>
+      <button onclick="viewGroupDetails()">Group Details</button>
       <button class="secondary" onclick="doLeaveGroup()">Leave This Group</button>
     </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     PAGE: GROUP DETAILS
+     ════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-group-details">
+  <div class="card">
+    <div class="topbar">
+      <span class="logo" onclick="goHome()">🎲</span>
+      <button class="secondary" onclick="doLogout()">Log Out</button>
+    </div>
+    <h2 id="group-details-name"></h2>
+    
+    <div id="edit-name-section" style="display:none; margin-bottom:20px;">
+      <label>Edit Group Name</label>
+      <input type="text" id="edit-group-name-input" placeholder="New group name">
+      <button onclick="saveGroupName()">Save Name</button>
+      <button class="secondary" onclick="cancelEditGroupName()">Cancel</button>
+    </div>
+    
+    <div id="group-photo-section" style="display:none; margin-bottom:20px;">
+      <label>Group Photo</label>
+      <div id="current-group-photo" style="margin-bottom:10px;"></div>
+      <input type="file" id="group-photo-upload" accept="image/*" onchange="uploadGroupPhoto()">
+    </div>
+    
+    <h3>Members</h3>
+    <div id="group-details-members"></div>
+    
+    <button class="secondary" onclick="goBackToGroup()" style="margin-top:20px;">Back to Group</button>
   </div>
 </div>
 
@@ -622,7 +654,11 @@ button.ghost:hover { background:#667eea; color:white; }
   <div class="card">
     <div class="topbar">
       <span class="logo" onclick="goHome()">🎲</span>
-      <button class="secondary" onclick="doLogout()">Log Out</button>
+      <div style="display:flex; gap:8px;">
+        <button class="secondary" style="padding:8px 12px; font-size:13px;" onclick="goToPage('page-vote-filters')">Filters</button>
+        <button class="secondary" style="padding:8px 12px; font-size:13px;" onclick="goBackToGroup()">Group</button>
+        <button class="secondary" onclick="doLogout()">Log Out</button>
+      </div>
     </div>
     <h2>Vote on Games</h2>
     <div class="checkbox-row">
@@ -645,7 +681,11 @@ button.ghost:hover { background:#667eea; color:white; }
   <div class="card" style="text-align:center;">
     <div class="topbar">
       <span class="logo" onclick="goHome()">🎲</span>
-      <button class="secondary" onclick="doLogout()">Log Out</button>
+      <div style="display:flex; gap:8px;">
+        <button class="secondary" style="padding:8px 12px; font-size:13px;" onclick="goToPage('page-vote-filters')">Filters</button>
+        <button class="secondary" style="padding:8px 12px; font-size:13px;" onclick="goBackToGroup()">Group</button>
+        <button class="secondary" onclick="doLogout()">Log Out</button>
+      </div>
     </div>
     <h2>🎯 Suggested Game</h2>
     <div id="result-winner"></div>
@@ -939,6 +979,16 @@ async function goHome() {
     renderHomeGroups(user);
 }
 
+function getGroupIconHtml(group, size = 40) {
+    if (group.groupPhoto) {
+        return `<div style="width:${size}px; height:${size}px; border-radius:50%; overflow:hidden; background:#f0f0f0; flex-shrink:0;">
+            <img src="${group.groupPhoto}" style="width:100%; height:100%; object-fit:cover;" alt="Group photo">
+        </div>`;
+    } else {
+        return `<div style="width:${size}px; height:${size}px; border-radius:50%; background:linear-gradient(135deg,#667eea,#764ba2); display:flex; align-items:center; justify-content:center; font-size:${size * 0.6}px; flex-shrink:0;">🎲</div>`;
+    }
+}
+
 async function renderHomeGroups(user) {
     const container = document.getElementById('home-groups');
 
@@ -958,7 +1008,8 @@ async function renderHomeGroups(user) {
         div.className = 'group-card';
         div.onclick = () => goToGroup(g.code);
         div.innerHTML = `
-            <div>
+            ${getGroupIconHtml(g, 48)}
+            <div style="flex:1; min-width:0;">
                 <div class="gc-title">${g.name}</div>
                 <div class="gc-sub">${g.members.length} member${g.members.length !== 1 ? 's' : ''}
                     ${activeVotes.length > 0 ? ' • <strong style="color:#667eea;">' + activeVotes.length + ' active vote' + (activeVotes.length !== 1 ? 's' : '') + '</strong>' : ''}
@@ -996,7 +1047,15 @@ async function doCreateGroup() {
         if (!members.includes(inv)) members.push(inv);
     }
 
-    await fsSaveGroup({ code, name, createdBy: user.username, members, votes: {}, createdAt: new Date().toISOString() });
+    await fsSaveGroup({ 
+        code, 
+        name, 
+        createdBy: user.username, 
+        members, 
+        groupAdmins: [user.username], 
+        votes: {}, 
+        createdAt: new Date().toISOString() 
+    });
 
     for (const m of members) {
         const mu = await fsGetUser(m);
@@ -1052,11 +1111,28 @@ async function goToGroup(code) {
     showLoading(false);
     if (!g) { goHome(); return; }
 
+    // Migration: Set groupAdmins if not present
+    if (!g.groupAdmins || g.groupAdmins.length === 0) {
+        g.groupAdmins = g.createdBy ? [g.createdBy] : ['mauhhf'];
+        await fsSaveGroup(g);
+    }
+
     activeGroupCode = code;
     activeGroup = g;
 
     document.getElementById('group-header-name').textContent = g.name;
     document.getElementById('group-code-display').textContent = g.code;
+    
+    // Update group icon in header
+    const iconEl = document.getElementById('group-icon-header');
+    if (g.groupPhoto) {
+        iconEl.innerHTML = `<img src="${g.groupPhoto}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;" alt="Group">`;
+        iconEl.className = '';
+    } else {
+        iconEl.textContent = '🎲';
+        iconEl.className = 'logo';
+    }
+    
     goToPage('page-group');
     renderGroupMembers();
     renderGroupVotes();
@@ -1065,6 +1141,233 @@ async function goToGroup(code) {
 function goBackToGroup() {
     if (activeGroupCode) goToGroup(activeGroupCode);
     else goHome();
+}
+
+// ════════════════════════════════════════════════════════════════════
+// GROUP DETAILS
+// ════════════════════════════════════════════════════════════════════
+function isGroupAdmin(username) {
+    return activeGroup && activeGroup.groupAdmins && activeGroup.groupAdmins.includes(username);
+}
+
+async function viewGroupDetails() {
+    showLoading(true);
+    activeGroup = await fsGetGroup(activeGroupCode);
+    showLoading(false);
+    
+    document.getElementById('group-details-name').textContent = activeGroup.name;
+    
+    // Show admin-only sections
+    const isAdmin = isGroupAdmin(session.username);
+    document.getElementById('edit-name-section').style.display = isAdmin ? 'block' : 'none';
+    document.getElementById('group-photo-section').style.display = isAdmin ? 'block' : 'none';
+    
+    // Show current photo if exists
+    const photoContainer = document.getElementById('current-group-photo');
+    if (activeGroup.groupPhoto) {
+        photoContainer.innerHTML = `
+            <div style="display:inline-block;">
+                <img src="${activeGroup.groupPhoto}" style="width:100px; height:100px; border-radius:50%; object-fit:cover; border:2px solid #e0e0e0;" alt="Current group photo">
+                <p style="font-size:12px; color:#666; margin-top:6px;">Current photo</p>
+            </div>
+        `;
+    } else {
+        photoContainer.innerHTML = '<p style="font-size:13px; color:#666;">No photo uploaded yet</p>';
+    }
+    
+    await renderGroupDetailsMembers();
+    goToPage('page-group-details');
+}
+
+async function renderGroupDetailsMembers() {
+    const container = document.getElementById('group-details-members');
+    container.innerHTML = '<p style="color:#666;">Loading members...</p>';
+    
+    const members = await Promise.all(activeGroup.members.map(username => fsGetUser(username)));
+    const isCurrentUserAdmin = isGroupAdmin(session.username);
+    
+    // Sort: admins first, then alphabetically
+    members.sort((a, b) => {
+        const aIsAdmin = isGroupAdmin(a.username);
+        const bIsAdmin = isGroupAdmin(b.username);
+        if (aIsAdmin && !bIsAdmin) return -1;
+        if (!aIsAdmin && bIsAdmin) return 1;
+        return a.username.localeCompare(b.username);
+    });
+    
+    let html = `
+        <table style="width:100%; border-collapse:collapse; font-size:14px; margin-bottom:20px;">
+            <thead>
+                <tr style="border-bottom:2px solid #333; text-align:left;">
+                    <th style="padding:8px;">Username</th>
+                    <th style="padding:8px;">Display Name</th>
+                    <th style="padding:8px;">Games</th>
+                    <th style="padding:8px;">Role</th>
+                    ${isCurrentUserAdmin ? '<th style="padding:8px;">Actions</th>' : ''}
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    members.forEach(u => {
+        if (!u) return;
+        const gameCount = (u.games || []).length;
+        const isAdmin = isGroupAdmin(u.username);
+        const roleDisplay = isAdmin ? '<span style="color:#667eea; font-weight:600;">Group Admin</span>' : 'Member';
+        
+        html += `<tr style="border-bottom:1px solid #eee;">
+            <td style="padding:8px;">${u.username}</td>
+            <td style="padding:8px;">${u.displayName || '—'}</td>
+            <td style="padding:8px;">${gameCount}</td>
+            <td style="padding:8px;">${roleDisplay}</td>`;
+        
+        if (isCurrentUserAdmin) {
+            html += '<td style="padding:8px;">';
+            if (!isAdmin) {
+                html += `<button class="secondary" style="padding:4px 8px; font-size:12px; margin-right:4px;" onclick="makeGroupAdmin('${u.username}')">Make Admin</button>`;
+            }
+            if (u.username !== session.username) {
+                html += `<button class="danger" style="padding:4px 8px; font-size:12px;" onclick="removeFromGroup('${u.username}')">Remove</button>`;
+            }
+            html += '</td>';
+        }
+        
+        html += '</tr>';
+    });
+    
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+async function makeGroupAdmin(username) {
+    if (!isGroupAdmin(session.username)) {
+        alert('You must be a group admin to perform this action');
+        return;
+    }
+    
+    if (!activeGroup.groupAdmins.includes(username)) {
+        activeGroup.groupAdmins.push(username);
+        showLoading(true);
+        await fsSaveGroup(activeGroup);
+        showLoading(false);
+        await renderGroupDetailsMembers();
+    }
+}
+
+async function removeFromGroup(username) {
+    if (!isGroupAdmin(session.username)) {
+        alert('You must be a group admin to perform this action');
+        return;
+    }
+    
+    // First confirmation
+    if (!confirm(`Remove ${username} from this group?`)) {
+        return;
+    }
+    
+    // Second confirmation
+    if (!confirm(`Are you sure you want to remove ${username}? They will lose access to all group data.`)) {
+        return;
+    }
+    
+    showLoading(true);
+    
+    // Remove from group members and admins
+    activeGroup.members = activeGroup.members.filter(m => m !== username);
+    activeGroup.groupAdmins = activeGroup.groupAdmins.filter(a => a !== username);
+    await fsSaveGroup(activeGroup);
+    
+    // Remove group from user's groups list
+    const user = await fsGetUser(username);
+    if (user) {
+        user.groups = user.groups.filter(g => g !== activeGroupCode);
+        await fsSaveUser(user);
+    }
+    
+    showLoading(false);
+    await renderGroupDetailsMembers();
+}
+
+function cancelEditGroupName() {
+    document.getElementById('edit-group-name-input').value = '';
+}
+
+async function saveGroupName() {
+    if (!isGroupAdmin(session.username)) {
+        alert('You must be a group admin to edit the group name');
+        return;
+    }
+    
+    const newName = document.getElementById('edit-group-name-input').value.trim();
+    if (!newName) {
+        alert('Please enter a group name');
+        return;
+    }
+    
+    showLoading(true);
+    activeGroup.name = newName;
+    await fsSaveGroup(activeGroup);
+    showLoading(false);
+    
+    document.getElementById('group-details-name').textContent = newName;
+    document.getElementById('edit-group-name-input').value = '';
+    alert('Group name updated!');
+}
+
+async function uploadGroupPhoto() {
+    if (!isGroupAdmin(session.username)) {
+        alert('You must be a group admin to upload a photo');
+        return;
+    }
+    
+    const input = document.getElementById('group-photo-upload');
+    const file = input.files[0];
+    if (!file) return;
+    
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+        alert('Please upload an image file');
+        return;
+    }
+    
+    // Check file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+        alert('Image must be smaller than 2MB');
+        return;
+    }
+    
+    showLoading(true);
+    
+    try {
+        // Convert to base64
+        const base64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+        
+        activeGroup.groupPhoto = base64;
+        await fsSaveGroup(activeGroup);
+        
+        showLoading(false);
+        alert('Group photo uploaded!');
+        
+        // Refresh the photo display
+        const photoContainer = document.getElementById('current-group-photo');
+        photoContainer.innerHTML = `
+            <div style="display:inline-block;">
+                <img src="${base64}" style="width:100px; height:100px; border-radius:50%; object-fit:cover; border:2px solid #e0e0e0;" alt="Current group photo">
+                <p style="font-size:12px; color:#666; margin-top:6px;">Current photo</p>
+            </div>
+        `;
+        
+    } catch (e) {
+        showLoading(false);
+        alert('Error uploading photo: ' + e.message);
+    }
+    
+    input.value = '';
 }
 
 async function renderGroupMembers() {
