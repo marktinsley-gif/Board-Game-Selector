@@ -1194,7 +1194,6 @@ async function doLeaveGroup() {
 async function viewGroupCollection() {
     showLoading(true);
     activeGroup = await fsGetGroup(activeGroupCode);
-    showLoading(false);
     
     // Initialize groupPromotions if it doesn't exist
     if (!activeGroup.groupPromotions) {
@@ -1204,10 +1203,13 @@ async function viewGroupCollection() {
     // Initialize sliders for group collection filters
     initGCSliders();
     
-    // Render owner checkboxes
-    renderGCOwnerCheckboxes();
+    // Render owner checkboxes (must wait for this before rendering collection)
+    await renderGCOwnerCheckboxes();
     
-    renderGroupCollection();
+    // Now render the collection
+    await renderGroupCollection();
+    
+    showLoading(false);
     goToPage('page-group-collection');
 }
 
