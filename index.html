@@ -337,6 +337,11 @@ button.ghost:hover { background:#667eea; color:white; }
       <input type="file" id="home-col-csv" accept=".csv,.tsv" onchange="loadCollectionCSVFrom('home-col-csv')">
     </div>
 
+    <div id="admin-section" style="display:none;" class="section">
+      <h3>Admin</h3>
+      <button onclick="goToAdminPanel()">View Admin Panel</button>
+    </div>
+
     <div id="create-group-panel" style="display:none;" class="section">
       <div class="alert error" id="create-group-error"></div>
       <h3>Create a New Group</h3>
@@ -430,28 +435,18 @@ button.ghost:hover { background:#667eea; color:white; }
       <label>Include games from:</label>
       <div id="gc-owner-checkboxes" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px;"></div>
       
-      <label>Number of Players</label>
-      <input type="number" id="gc-filter-players" min="1" max="20" value="4" style="max-width:120px;">
-      
-      <div class="checkbox-row" style="margin-top:8px; margin-bottom:12px;">
-        <input type="checkbox" id="gc-filter-player-range" onchange="toggleGCPlayerCountRange()">
-        <label for="gc-filter-player-range" style="font-size:13px; color:#666;">Use player count range (uncertain player count)</label>
+      <div class="slider-container" style="margin-bottom:12px;">
+        <div class="slider-label"><label style="margin:0;">Player Count Range</label><span id="gc-player-range-label">1 – 20</span></div>
+        <div class="dual-range" id="gc-dr-players">
+          <div class="dual-range-track"><div class="dual-range-selected"></div></div>
+          <div class="dual-range-thumb dual-range-thumb-min"></div>
+          <div class="dual-range-thumb dual-range-thumb-max"></div>
+        </div>
       </div>
       
-      <div id="gc-player-range-container" style="display:none; margin-bottom:20px;">
-        <div class="slider-container" style="margin-bottom:12px;">
-          <div class="slider-label"><label style="margin:0;">Player Count Range</label><span id="gc-player-range-label">2 – 6</span></div>
-          <div class="dual-range" id="gc-dr-players">
-            <div class="dual-range-track"><div class="dual-range-selected"></div></div>
-            <div class="dual-range-thumb dual-range-thumb-min"></div>
-            <div class="dual-range-thumb dual-range-thumb-max"></div>
-          </div>
-        </div>
-        
-        <div class="checkbox-row" style="margin-top:0px; margin-bottom:8px;">
-          <input type="checkbox" id="gc-filter-all-player-counts">
-          <label for="gc-filter-all-player-counts" style="font-size:13px;">Must work at ALL player counts in range</label>
-        </div>
+      <div class="checkbox-row" style="margin-top:0px; margin-bottom:8px;">
+        <input type="checkbox" id="gc-filter-all-player-counts">
+        <label for="gc-filter-all-player-counts" style="font-size:13px;">Must work at ALL player counts in range</label>
       </div>
       
       <div class="checkbox-row" style="margin-top:10px; margin-bottom:8px;">
@@ -661,6 +656,22 @@ button.ghost:hover { background:#667eea; color:white; }
   </div>
 </div>
 
+<!-- ════════════════════════════════════════════════════════════
+     PAGE: ADMIN
+     ════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-admin">
+  <div class="card">
+    <div class="topbar">
+      <span class="logo" onclick="goHome()">🎲</span>
+      <button class="secondary" onclick="doLogout()">Log Out</button>
+    </div>
+    <h2>Admin Panel</h2>
+    <p class="subtitle">User overview</p>
+    <div id="admin-user-list"></div>
+    <button class="secondary" onclick="goHome()" style="margin-top:20px;">Back to Home</button>
+  </div>
+</div>
+
 </div><!-- /container -->
 
 <div class="loading-overlay" id="loading"><div class="spinner"></div></div>
@@ -756,6 +767,9 @@ window.addEventListener('unhandledrejection', function(e) {
 // ════════════════════════════════════════════════════════════════════
 let session = null;
 try { session = JSON.parse(localStorage.getItem('bgg_session')); } catch(e) {}
+
+// Admin users
+const ADMIN_USERS = ['mauhhf'];
 
 function saveSession() {
     try { localStorage.setItem('bgg_session', JSON.stringify(session)); } catch(e) {}
@@ -896,6 +910,10 @@ function doLogout() {
 // ════════════════════════════════════════════════════════════════════
 // HOME DASHBOARD
 // ════════════════════════════════════════════════════════════════════
+function isAdmin(username) {
+    return ADMIN_USERS.includes(username);
+}
+
 async function goHome() {
     if (!session) { goToPage('page-login'); return; }
 
@@ -905,6 +923,10 @@ async function goHome() {
     if (!user) { doLogout(); return; }
 
     document.getElementById('home-usertag').textContent = user.displayName;
+    
+    // Show admin section if user is admin
+    document.getElementById('admin-section').style.display = isAdmin(session.username) ? 'block' : 'none';
+    
     renderHomeCollection();
     hideCreateGroupModal();
     hideJoinGroupModal();
@@ -1191,7 +1213,7 @@ async function viewGroupCollection() {
 
 function initGCSliders() {
     if (!window.gcSliders) window.gcSliders = {};
-    gcSliders.playerCount = new DualRange('gc-dr-players', { min:1, max:20, step:1, minVal:2, maxVal:6, labelEl:'gc-player-range-label', fmt: (a,b) => a+' – '+b });
+    gcSliders.playerCount = new DualRange('gc-dr-players', { min:1, max:20, step:1, minVal:1, maxVal:20, labelEl:'gc-player-range-label', fmt: (a,b) => a+' – '+b });
     gcSliders.complexity = new DualRange('gc-dr-complexity', { min:1, max:5, step:0.1, minVal:1, maxVal:5, labelEl:'gc-complexity-label', fmt: (a,b) => a.toFixed(1)+' – '+b.toFixed(1) });
     gcSliders.rating = new DualRange('gc-dr-rating', { min:1, max:10, step:0.1, minVal:1, maxVal:10, labelEl:'gc-rating-label', fmt: (a,b) => a.toFixed(1)+' – '+b.toFixed(1) });
 }
@@ -1202,12 +1224,6 @@ function toggleGCFilters() {
     const isHidden = panel.style.display === 'none';
     panel.style.display = isHidden ? 'block' : 'none';
     button.textContent = isHidden ? 'Hide Filters' : 'Show Filters';
-}
-
-function toggleGCPlayerCountRange() {
-    const useRange = document.getElementById('gc-filter-player-range').checked;
-    document.getElementById('gc-player-range-container').style.display = useRange ? 'block' : 'none';
-    document.getElementById('gc-filter-players').style.display = useRange ? 'none' : 'block';
 }
 
 async function renderGCOwnerCheckboxes() {
@@ -1240,8 +1256,6 @@ async function renderGroupCollection() {
     
     // Get filter values
     const noExp = document.getElementById('gc-no-expansions').checked;
-    const useRange = document.getElementById('gc-filter-player-range').checked;
-    const players = parseInt(document.getElementById('gc-filter-players').value) || 4;
     const playerMin = gcSliders.playerCount.getMin();
     const playerMax = gcSliders.playerCount.getMax();
     const allPlayerCounts = document.getElementById('gc-filter-all-player-counts').checked;
@@ -1285,39 +1299,34 @@ async function renderGroupCollection() {
         // Expansion filter
         if (noExp && g.itemType === 'expansion') return false;
         
-        // Player count check
+        // Player count check (always using range)
         let playerCountOk = false;
-        if (useRange) {
-            if (allPlayerCounts) {
-                playerCountOk = g.minPlayers <= playerMin && g.maxPlayers >= playerMax;
-            } else {
-                playerCountOk = !(g.maxPlayers < playerMin || g.minPlayers > playerMax);
-            }
+        if (allPlayerCounts) {
+            playerCountOk = g.minPlayers <= playerMin && g.maxPlayers >= playerMax;
         } else {
-            playerCountOk = g.minPlayers <= players && g.maxPlayers >= players;
+            playerCountOk = !(g.maxPlayers < playerMin || g.minPlayers > playerMax);
         }
         if (!playerCountOk) return false;
         
-        // Recommended/Best filters
+        // Recommended/Best filters (always using range)
         if (recOnly || bestOnly) {
-            if (useRange) {
-                const playerCounts = [];
-                for (let p = playerMin; p <= playerMax; p++) {
-                    playerCounts.push(p);
-                }
+            const playerCounts = [];
+            for (let p = playerMin; p <= playerMax; p++) {
+                playerCounts.push(p);
+            }
+            
+            if (recOnly) {
+                const hasRecPlayers = g.recPlayers && g.recPlayers.length > 0;
+                if (!hasRecPlayers) return false;
                 
-                if (recOnly) {
-                    const hasRecPlayers = g.recPlayers && g.recPlayers.length > 0;
-                    if (!hasRecPlayers) return false;
-                    
-                    if (allPlayerCounts) {
-                        const allRecommended = playerCounts.every(p => g.recPlayers.includes(p));
-                        if (!allRecommended) return false;
-                    } else {
-                        const anyRecommended = playerCounts.some(p => g.recPlayers.includes(p));
-                        if (!anyRecommended) return false;
-                    }
+                if (allPlayerCounts) {
+                    const allRecommended = playerCounts.every(p => g.recPlayers.includes(p));
+                    if (!allRecommended) return false;
+                } else {
+                    const anyRecommended = playerCounts.some(p => g.recPlayers.includes(p));
+                    if (!anyRecommended) return false;
                 }
+            }
                 
                 if (bestOnly) {
                     const hasBestPlayers = g.bestPlayers && g.bestPlayers.length > 0;
@@ -1330,18 +1339,6 @@ async function renderGroupCollection() {
                         const anyBest = playerCounts.some(p => g.bestPlayers.includes(p));
                         if (!anyBest) return false;
                     }
-                }
-            } else {
-                if (recOnly) {
-                    const hasRecPlayers = g.recPlayers && g.recPlayers.length > 0;
-                    const isInRecPlayers = hasRecPlayers && g.recPlayers.includes(players);
-                    if (!isInRecPlayers) return false;
-                }
-                
-                if (bestOnly) {
-                    const hasBestPlayers = g.bestPlayers && g.bestPlayers.length > 0;
-                    const isInBestPlayers = hasBestPlayers && g.bestPlayers.includes(players);
-                    if (!isInBestPlayers) return false;
                 }
             }
         }
@@ -1419,6 +1416,81 @@ async function groupPromote(gameId, action) {
     showLoading(false);
     
     renderGroupCollection();
+}
+
+// ════════════════════════════════════════════════════════════════════
+// ADMIN PANEL
+// ════════════════════════════════════════════════════════════════════
+async function goToAdminPanel() {
+    if (!isAdmin(session.username)) {
+        showAlert('login-error', 'Access denied');
+        return;
+    }
+    
+    showLoading(true);
+    await renderAdminPanel();
+    showLoading(false);
+    goToPage('page-admin');
+}
+
+async function renderAdminPanel() {
+    const container = document.getElementById('admin-user-list');
+    container.innerHTML = '<p style="color:#666;">Loading users...</p>';
+    
+    // Fetch all users by listing documents
+    // Note: This is a simplified approach. In production, you'd want pagination
+    const response = await fetch(`${FS_BASE}/users?key=${FS_API_KEY}`);
+    if (!response.ok) {
+        container.innerHTML = '<p style="color:#c33;">Failed to load users</p>';
+        return;
+    }
+    
+    const data = await response.json();
+    const users = [];
+    
+    if (data.documents) {
+        for (const doc of data.documents) {
+            const username = doc.name.split('/').pop();
+            const userData = {};
+            for (const [k, v] of Object.entries(doc.fields || {})) {
+                userData[k] = fsDecode(v);
+            }
+            userData.username = username;
+            users.push(userData);
+        }
+    }
+    
+    users.sort((a, b) => a.username.localeCompare(b.username));
+    
+    // Render table
+    let html = `
+        <table style="width:100%; border-collapse:collapse; font-size:14px;">
+            <thead>
+                <tr style="border-bottom:2px solid #333; text-align:left;">
+                    <th style="padding:8px;">Username</th>
+                    <th style="padding:8px;">Display Name</th>
+                    <th style="padding:8px;">Games</th>
+                    <th style="padding:8px;">Groups</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    users.forEach(u => {
+        const gameCount = (u.games || []).length;
+        const groupList = (u.groups || []).join(', ') || '—';
+        html += `
+            <tr style="border-bottom:1px solid #eee;">
+                <td style="padding:8px;">${u.username}</td>
+                <td style="padding:8px;">${u.displayName || '—'}</td>
+                <td style="padding:8px;">${gameCount}</td>
+                <td style="padding:8px; font-family:monospace; font-size:12px;">${groupList}</td>
+            </tr>
+        `;
+    });
+    
+    html += '</tbody></table>';
+    container.innerHTML = html;
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -2136,8 +2208,8 @@ class DualRange {
         let r = Math.max(0, Math.min(1, (this.px(e) - rect.left) / rect.width));
         let raw = Math.round((this.min + r * (this.max - this.min)) / this.step) * this.step;
         raw = Math.max(this.min, Math.min(this.max, raw));
-        if (this.dragging === 'min') this.vals.min = Math.max(this.min, Math.min(raw, this.vals.max - this.step));
-        else this.vals.max = Math.min(this.max, Math.max(raw, this.vals.min + this.step));
+        if (this.dragging === 'min') this.vals.min = Math.max(this.min, Math.min(raw, this.vals.max));
+        else this.vals.max = Math.min(this.max, Math.max(raw, this.vals.min));
         this.render();
     }
     end() { this.dragging = null; }
