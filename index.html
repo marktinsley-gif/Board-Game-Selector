@@ -666,8 +666,13 @@ button.ghost:hover { background:#667eea; color:white; }
       <button class="secondary" onclick="doLogout()">Log Out</button>
     </div>
     <h2>Admin Panel</h2>
-    <p class="subtitle">User overview</p>
+    
+    <h3 style="margin-top:20px; margin-bottom:12px;">Users</h3>
     <div id="admin-user-list"></div>
+    
+    <h3 style="margin-top:30px; margin-bottom:12px;">Groups</h3>
+    <div id="admin-group-list"></div>
+    
     <button class="secondary" onclick="goHome()" style="margin-top:20px;">Back to Home</button>
   </div>
 </div>
@@ -1435,22 +1440,24 @@ async function goToAdminPanel() {
 }
 
 async function renderAdminPanel() {
-    const container = document.getElementById('admin-user-list');
-    container.innerHTML = '<p style="color:#666;">Loading users...</p>';
+    const userContainer = document.getElementById('admin-user-list');
+    const groupContainer = document.getElementById('admin-group-list');
     
-    // Fetch all users by listing documents
-    // Note: This is a simplified approach. In production, you'd want pagination
-    const response = await fetch(`${FS_BASE}/users?key=${FS_API_KEY}`);
-    if (!response.ok) {
-        container.innerHTML = '<p style="color:#c33;">Failed to load users</p>';
+    userContainer.innerHTML = '<p style="color:#666;">Loading users...</p>';
+    groupContainer.innerHTML = '<p style="color:#666;">Loading groups...</p>';
+    
+    // Fetch all users
+    const usersResponse = await fetch(`${FS_BASE}/users?key=${FS_API_KEY}`);
+    if (!usersResponse.ok) {
+        userContainer.innerHTML = '<p style="color:#c33;">Failed to load users</p>';
         return;
     }
     
-    const data = await response.json();
+    const usersData = await usersResponse.json();
     const users = [];
     
-    if (data.documents) {
-        for (const doc of data.documents) {
+    if (usersData.documents) {
+        for (const doc of usersData.documents) {
             const username = doc.name.split('/').pop();
             const userData = {};
             for (const [k, v] of Object.entries(doc.fields || {})) {
@@ -1463,8 +1470,29 @@ async function renderAdminPanel() {
     
     users.sort((a, b) => a.username.localeCompare(b.username));
     
-    // Render table
-    let html = `
+    // Fetch all groups
+    const groupsResponse = await fetch(`${FS_BASE}/groups?key=${FS_API_KEY}`);
+    const groups = [];
+    
+    if (groupsResponse.ok) {
+        const groupsData = await groupsResponse.json();
+        if (groupsData.documents) {
+            for (const doc of groupsData.documents) {
+                const code = doc.name.split('/').pop();
+                const groupData = {};
+                for (const [k, v] of Object.entries(doc.fields || {})) {
+                    groupData[k] = fsDecode(v);
+                }
+                groupData.code = code;
+                groups.push(groupData);
+            }
+        }
+    }
+    
+    groups.sort((a, b) => a.name.localeCompare(b.name));
+    
+    // Render users table
+    let userHtml = `
         <table style="width:100%; border-collapse:collapse; font-size:14px;">
             <thead>
                 <tr style="border-bottom:2px solid #333; text-align:left;">
@@ -1472,6 +1500,7 @@ async function renderAdminPanel() {
                     <th style="padding:8px;">Display Name</th>
                     <th style="padding:8px;">Games</th>
                     <th style="padding:8px;">Groups</th>
+                    <th style="padding:8px;">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -1480,18 +1509,156 @@ async function renderAdminPanel() {
     users.forEach(u => {
         const gameCount = (u.games || []).length;
         const groupList = (u.groups || []).join(', ') || '—';
-        html += `
+        userHtml += `
             <tr style="border-bottom:1px solid #eee;">
                 <td style="padding:8px;">${u.username}</td>
                 <td style="padding:8px;">${u.displayName || '—'}</td>
                 <td style="padding:8px;">${gameCount}</td>
                 <td style="padding:8px; font-family:monospace; font-size:12px;">${groupList}</td>
+                <td style="padding:8px;">
+                    <button class="danger" style="padding:4px 8px; font-size:12px;" onclick="adminDeleteUser('${u.username}')">Delete</button>
+                </td>
             </tr>
         `;
     });
     
-    html += '</tbody></table>';
-    container.innerHTML = html;
+    userHtml += '</tbody></table>';
+    userContainer.innerHTML = userHtml;
+    
+    // Render groups table
+    let groupHtml = `
+        <table style="width:100%; border-collapse:collapse; font-size:14px;">
+            <thead>
+                <tr style="border-bottom:2px solid #333; text-align:left;">
+                    <th style="padding:8px;">Group Name</th>
+                    <th style="padding:8px;">Code</th>
+                    <th style="padding:8px;">Members</th>
+                    <th style="padding:8px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    groups.forEach(g => {
+        const memberList = (g.members || []).join(', ') || '—';
+        groupHtml += `
+            <tr style="border-bottom:1px solid #eee;">
+                <td style="padding:8px;">${g.name}</td>
+                <td style="padding:8px; font-family:monospace;">${g.code}</td>
+                <td style="padding:8px; font-size:12px;">${memberList}</td>
+                <td style="padding:8px;">
+                    <button class="danger" style="padding:4px 8px; font-size:12px;" onclick="adminDeleteGroup('${g.code}')">Delete</button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    groupHtml += '</tbody></table>';
+    groupContainer.innerHTML = groupHtml;
+}
+
+async function adminDeleteUser(username) {
+    if (!isAdmin(session.username)) {
+        alert('Access denied');
+        return;
+    }
+    
+    // First confirmation
+    if (!confirm(`Are you sure you want to delete user "${username}"? This will permanently remove their account and all their data.`)) {
+        return;
+    }
+    
+    // Second confirmation
+    if (!confirm(`FINAL CONFIRMATION: Delete user "${username}"? This action CANNOT be undone.`)) {
+        return;
+    }
+    
+    showLoading(true);
+    
+    try {
+        // Get user to find their groups
+        const user = await fsGetUser(username);
+        
+        // Remove user from all their groups
+        if (user && user.groups) {
+            for (const groupCode of user.groups) {
+                const group = await fsGetGroup(groupCode);
+                if (group) {
+                    group.members = group.members.filter(m => m !== username);
+                    await fsSaveGroup(group);
+                }
+            }
+        }
+        
+        // Delete the user document
+        const response = await fetch(`${FS_BASE}/users/${username}?key=${FS_API_KEY}`, {
+            method: 'DELETE'
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to delete user');
+        }
+        
+        showLoading(false);
+        alert(`User "${username}" has been deleted.`);
+        await renderAdminPanel();
+        
+    } catch (e) {
+        showLoading(false);
+        alert('Error deleting user: ' + e.message);
+    }
+}
+
+async function adminDeleteGroup(code) {
+    if (!isAdmin(session.username)) {
+        alert('Access denied');
+        return;
+    }
+    
+    // First confirmation
+    if (!confirm(`Are you sure you want to delete group "${code}"? This will remove it for all members.`)) {
+        return;
+    }
+    
+    // Second confirmation
+    if (!confirm(`FINAL CONFIRMATION: Delete group "${code}"? This action CANNOT be undone.`)) {
+        return;
+    }
+    
+    showLoading(true);
+    
+    try {
+        // Get group to find members
+        const group = await fsGetGroup(code);
+        
+        // Remove group from all members' group lists
+        if (group && group.members) {
+            for (const username of group.members) {
+                const user = await fsGetUser(username);
+                if (user && user.groups) {
+                    user.groups = user.groups.filter(g => g !== code);
+                    await fsSaveUser(user);
+                }
+            }
+        }
+        
+        // Delete the group document
+        const response = await fetch(`${FS_BASE}/groups/${code}?key=${FS_API_KEY}`, {
+            method: 'DELETE'
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to delete group');
+        }
+        
+        showLoading(false);
+        alert(`Group "${code}" has been deleted.`);
+        await renderAdminPanel();
+        
+    } catch (e) {
+        showLoading(false);
+        alert('Error deleting group: ' + e.message);
+    }
 }
 
 // ════════════════════════════════════════════════════════════════════
