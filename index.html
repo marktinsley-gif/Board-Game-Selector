@@ -415,6 +415,76 @@ button.ghost:hover { background:#667eea; color:white; }
     </div>
     <h2>Group Collection</h2>
     <p class="subtitle">Promote games you'd like to play with this group.</p>
+    
+    <div class="checkbox-row" style="margin-bottom:16px;">
+      <input type="checkbox" id="gc-no-expansions" checked onchange="renderGroupCollection()">
+      <label for="gc-no-expansions">Exclude expansions</label>
+    </div>
+    
+    <button class="secondary" onclick="toggleGCFilters()" id="gc-filter-toggle" style="margin-bottom:12px;">Show Filters</button>
+    
+    <div id="gc-filters-panel" style="display:none; border:2px solid #e0e0e0; border-radius:8px; padding:16px; margin-bottom:16px; background:#f8f9fa;">
+      
+      <h3 style="margin-bottom:12px; font-size:16px;">Filter Collection</h3>
+      
+      <label>Include games from:</label>
+      <div id="gc-owner-checkboxes" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px;"></div>
+      
+      <label>Number of Players</label>
+      <input type="number" id="gc-filter-players" min="1" max="20" value="4" style="max-width:120px;">
+      
+      <div class="checkbox-row" style="margin-top:8px; margin-bottom:12px;">
+        <input type="checkbox" id="gc-filter-player-range" onchange="toggleGCPlayerCountRange()">
+        <label for="gc-filter-player-range" style="font-size:13px; color:#666;">Use player count range (uncertain player count)</label>
+      </div>
+      
+      <div id="gc-player-range-container" style="display:none; margin-bottom:20px;">
+        <div class="slider-container" style="margin-bottom:12px;">
+          <div class="slider-label"><label style="margin:0;">Player Count Range</label><span id="gc-player-range-label">2 – 6</span></div>
+          <div class="dual-range" id="gc-dr-players">
+            <div class="dual-range-track"><div class="dual-range-selected"></div></div>
+            <div class="dual-range-thumb dual-range-thumb-min"></div>
+            <div class="dual-range-thumb dual-range-thumb-max"></div>
+          </div>
+        </div>
+        
+        <div class="checkbox-row" style="margin-top:0px; margin-bottom:8px;">
+          <input type="checkbox" id="gc-filter-all-player-counts">
+          <label for="gc-filter-all-player-counts" style="font-size:13px;">Must work at ALL player counts in range</label>
+        </div>
+      </div>
+      
+      <div class="checkbox-row" style="margin-top:10px; margin-bottom:8px;">
+        <input type="checkbox" id="gc-filter-rec-players">
+        <label for="gc-filter-rec-players">Only include games marked as "recommended" at this player count</label>
+      </div>
+      
+      <div class="checkbox-row" style="margin-top:0px; margin-bottom:20px;">
+        <input type="checkbox" id="gc-filter-best-players">
+        <label for="gc-filter-best-players">Only include games marked as "best" at this player count</label>
+      </div>
+      
+      <div class="slider-container">
+        <div class="slider-label"><label style="margin:0;">Complexity</label><span id="gc-complexity-label">1.0 – 5.0</span></div>
+        <div class="dual-range" id="gc-dr-complexity">
+          <div class="dual-range-track"><div class="dual-range-selected"></div></div>
+          <div class="dual-range-thumb dual-range-thumb-min"></div>
+          <div class="dual-range-thumb dual-range-thumb-max"></div>
+        </div>
+      </div>
+      
+      <div class="slider-container">
+        <div class="slider-label"><label style="margin:0;">BGG Rating</label><span id="gc-rating-label">1.0 – 10.0</span></div>
+        <div class="dual-range" id="gc-dr-rating">
+          <div class="dual-range-track"><div class="dual-range-selected"></div></div>
+          <div class="dual-range-thumb dual-range-thumb-min"></div>
+          <div class="dual-range-thumb dual-range-thumb-max"></div>
+        </div>
+      </div>
+      
+      <button onclick="renderGroupCollection()" style="margin-top:12px;">Apply Filters</button>
+    </div>
+    
     <p style="font-size:13px; color:#666; margin-bottom:12px;" id="group-collection-count-label"></p>
     <div id="group-collection-list"></div>
     <button class="secondary" onclick="goBackToGroup()">Back to Group</button>
@@ -1109,12 +1179,85 @@ async function viewGroupCollection() {
         activeGroup.groupPromotions = {};
     }
     
+    // Initialize sliders for group collection filters
+    initGCSliders();
+    
+    // Render owner checkboxes
+    renderGCOwnerCheckboxes();
+    
     renderGroupCollection();
     goToPage('page-group-collection');
 }
 
+function initGCSliders() {
+    if (!window.gcSliders) window.gcSliders = {};
+    gcSliders.playerCount = new DualRange('gc-dr-players', { min:1, max:20, step:1, minVal:2, maxVal:6, labelEl:'gc-player-range-label', fmt: (a,b) => a+' – '+b });
+    gcSliders.complexity = new DualRange('gc-dr-complexity', { min:1, max:5, step:0.1, minVal:1, maxVal:5, labelEl:'gc-complexity-label', fmt: (a,b) => a.toFixed(1)+' – '+b.toFixed(1) });
+    gcSliders.rating = new DualRange('gc-dr-rating', { min:1, max:10, step:0.1, minVal:1, maxVal:10, labelEl:'gc-rating-label', fmt: (a,b) => a.toFixed(1)+' – '+b.toFixed(1) });
+}
+
+function toggleGCFilters() {
+    const panel = document.getElementById('gc-filters-panel');
+    const button = document.getElementById('gc-filter-toggle');
+    const isHidden = panel.style.display === 'none';
+    panel.style.display = isHidden ? 'block' : 'none';
+    button.textContent = isHidden ? 'Hide Filters' : 'Show Filters';
+}
+
+function toggleGCPlayerCountRange() {
+    const useRange = document.getElementById('gc-filter-player-range').checked;
+    document.getElementById('gc-player-range-container').style.display = useRange ? 'block' : 'none';
+    document.getElementById('gc-filter-players').style.display = useRange ? 'none' : 'block';
+}
+
+async function renderGCOwnerCheckboxes() {
+    const container = document.getElementById('gc-owner-checkboxes');
+    container.innerHTML = '';
+    
+    const members = await Promise.all(activeGroup.members.map(username => fsGetUser(username)));
+    
+    members.forEach(u => {
+        if (!u) return;
+        const label = document.createElement('label');
+        label.style.cssText = 'display:flex; align-items:center; gap:4px; cursor:pointer; background:#fff; padding:6px 10px; border:2px solid #e0e0e0; border-radius:6px;';
+        
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = true;
+        cb.id = 'gc-owner-' + u.username;
+        cb.style.margin = '0';
+        
+        const text = document.createTextNode(u.displayName);
+        
+        label.appendChild(cb);
+        label.appendChild(text);
+        container.appendChild(label);
+    });
+}
+
 async function renderGroupCollection() {
     const container = document.getElementById('group-collection-list');
+    
+    // Get filter values
+    const noExp = document.getElementById('gc-no-expansions').checked;
+    const useRange = document.getElementById('gc-filter-player-range').checked;
+    const players = parseInt(document.getElementById('gc-filter-players').value) || 4;
+    const playerMin = gcSliders.playerCount.getMin();
+    const playerMax = gcSliders.playerCount.getMax();
+    const allPlayerCounts = document.getElementById('gc-filter-all-player-counts').checked;
+    const recOnly = document.getElementById('gc-filter-rec-players').checked;
+    const bestOnly = document.getElementById('gc-filter-best-players').checked;
+    const cMin = gcSliders.complexity.getMin();
+    const cMax = gcSliders.complexity.getMax();
+    const rMin = gcSliders.rating.getMin();
+    const rMax = gcSliders.rating.getMax();
+    
+    // Get selected owners
+    const selectedOwners = [];
+    activeGroup.members.forEach(username => {
+        const cb = document.getElementById('gc-owner-' + username);
+        if (cb && cb.checked) selectedOwners.push(username);
+    });
     
     // Fetch all member collections
     const members = await Promise.all(activeGroup.members.map(username => fsGetUser(username)));
@@ -1122,6 +1265,9 @@ async function renderGroupCollection() {
     
     members.forEach(u => {
         if (!u) return;
+        // Only include games from selected owners
+        if (!selectedOwners.includes(u.username)) return;
+        
         const games = u.games || [];
         games.forEach(game => {
             if (!gameMap.has(game.id)) {
@@ -1132,7 +1278,79 @@ async function renderGroupCollection() {
         });
     });
     
-    const allGames = Array.from(gameMap.values());
+    let allGames = Array.from(gameMap.values());
+    
+    // Apply filters
+    allGames = allGames.filter(g => {
+        // Expansion filter
+        if (noExp && g.itemType === 'expansion') return false;
+        
+        // Player count check
+        let playerCountOk = false;
+        if (useRange) {
+            if (allPlayerCounts) {
+                playerCountOk = g.minPlayers <= playerMin && g.maxPlayers >= playerMax;
+            } else {
+                playerCountOk = !(g.maxPlayers < playerMin || g.minPlayers > playerMax);
+            }
+        } else {
+            playerCountOk = g.minPlayers <= players && g.maxPlayers >= players;
+        }
+        if (!playerCountOk) return false;
+        
+        // Recommended/Best filters
+        if (recOnly || bestOnly) {
+            if (useRange) {
+                const playerCounts = [];
+                for (let p = playerMin; p <= playerMax; p++) {
+                    playerCounts.push(p);
+                }
+                
+                if (recOnly) {
+                    const hasRecPlayers = g.recPlayers && g.recPlayers.length > 0;
+                    if (!hasRecPlayers) return false;
+                    
+                    if (allPlayerCounts) {
+                        const allRecommended = playerCounts.every(p => g.recPlayers.includes(p));
+                        if (!allRecommended) return false;
+                    } else {
+                        const anyRecommended = playerCounts.some(p => g.recPlayers.includes(p));
+                        if (!anyRecommended) return false;
+                    }
+                }
+                
+                if (bestOnly) {
+                    const hasBestPlayers = g.bestPlayers && g.bestPlayers.length > 0;
+                    if (!hasBestPlayers) return false;
+                    
+                    if (allPlayerCounts) {
+                        const allBest = playerCounts.every(p => g.bestPlayers.includes(p));
+                        if (!allBest) return false;
+                    } else {
+                        const anyBest = playerCounts.some(p => g.bestPlayers.includes(p));
+                        if (!anyBest) return false;
+                    }
+                }
+            } else {
+                if (recOnly) {
+                    const hasRecPlayers = g.recPlayers && g.recPlayers.length > 0;
+                    const isInRecPlayers = hasRecPlayers && g.recPlayers.includes(players);
+                    if (!isInRecPlayers) return false;
+                }
+                
+                if (bestOnly) {
+                    const hasBestPlayers = g.bestPlayers && g.bestPlayers.length > 0;
+                    const isInBestPlayers = hasBestPlayers && g.bestPlayers.includes(players);
+                    if (!isInBestPlayers) return false;
+                }
+            }
+        }
+        
+        // Complexity and rating filters
+        return g.complexity >= cMin && g.complexity <= cMax &&
+               g.average >= rMin && g.average <= rMax;
+    });
+    
     allGames.sort((a, b) => a.name.localeCompare(b.name));
     
     // Get promotions
