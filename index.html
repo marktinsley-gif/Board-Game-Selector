@@ -1327,18 +1327,17 @@ async function renderGroupCollection() {
                     if (!anyRecommended) return false;
                 }
             }
+            
+            if (bestOnly) {
+                const hasBestPlayers = g.bestPlayers && g.bestPlayers.length > 0;
+                if (!hasBestPlayers) return false;
                 
-                if (bestOnly) {
-                    const hasBestPlayers = g.bestPlayers && g.bestPlayers.length > 0;
-                    if (!hasBestPlayers) return false;
-                    
-                    if (allPlayerCounts) {
-                        const allBest = playerCounts.every(p => g.bestPlayers.includes(p));
-                        if (!allBest) return false;
-                    } else {
-                        const anyBest = playerCounts.some(p => g.bestPlayers.includes(p));
-                        if (!anyBest) return false;
-                    }
+                if (allPlayerCounts) {
+                    const allBest = playerCounts.every(p => g.bestPlayers.includes(p));
+                    if (!allBest) return false;
+                } else {
+                    const anyBest = playerCounts.some(p => g.bestPlayers.includes(p));
+                    if (!anyBest) return false;
                 }
             }
         }
