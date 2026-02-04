@@ -545,7 +545,7 @@ button.ghost:hover { background:#667eea; color:white; }
 <div class="page" id="page-vote-participants">
   <div class="card">
     <div class="topbar">
-      <span class="logo" onclick="goHome()">🎲</span>
+      <span id="vote-icon-participants" class="logo" onclick="goHome()">🎲</span>
       <button class="secondary" onclick="doLogout()">Log Out</button>
     </div>
     <h2>Select Participants</h2>
@@ -572,7 +572,7 @@ button.ghost:hover { background:#667eea; color:white; }
 <div class="page" id="page-vote-filters">
   <div class="card">
     <div class="topbar">
-      <span class="logo" onclick="goHome()">🎲</span>
+      <span id="vote-icon-filters" class="logo" onclick="goHome()">🎲</span>
       <button class="secondary" onclick="doLogout()">Log Out</button>
     </div>
     <h2>Filter Games</h2>
@@ -653,7 +653,7 @@ button.ghost:hover { background:#667eea; color:white; }
 <div class="page" id="page-vote-voting">
   <div class="card">
     <div class="topbar">
-      <span class="logo" onclick="goHome()">🎲</span>
+      <span id="vote-icon-voting" class="logo" onclick="goHome()">🎲</span>
       <div style="display:flex; gap:8px;">
         <button class="secondary" style="padding:8px 12px; font-size:13px;" onclick="goToPage('page-vote-filters')">Filters</button>
         <button class="secondary" style="padding:8px 12px; font-size:13px;" onclick="goBackToGroup()">Group</button>
@@ -680,7 +680,7 @@ button.ghost:hover { background:#667eea; color:white; }
 <div class="page" id="page-vote-result">
   <div class="card" style="text-align:center;">
     <div class="topbar">
-      <span class="logo" onclick="goHome()">🎲</span>
+      <span id="vote-icon-result" class="logo" onclick="goHome()">🎲</span>
       <div style="display:flex; gap:8px;">
         <button class="secondary" style="padding:8px 12px; font-size:13px;" onclick="goToPage('page-vote-filters')">Filters</button>
         <button class="secondary" style="padding:8px 12px; font-size:13px;" onclick="goBackToGroup()">Group</button>
@@ -987,6 +987,24 @@ function getGroupIconHtml(group, size = 40) {
     } else {
         return `<div style="width:${size}px; height:${size}px; border-radius:50%; background:linear-gradient(135deg,#667eea,#764ba2); display:flex; align-items:center; justify-content:center; font-size:${size * 0.6}px; flex-shrink:0;">🎲</div>`;
     }
+}
+
+function updateVotePageIcons() {
+    // Update all vote page icons with the group photo
+    const iconIds = ['vote-icon-participants', 'vote-icon-filters', 'vote-icon-voting', 'vote-icon-result'];
+    
+    iconIds.forEach(iconId => {
+        const iconEl = document.getElementById(iconId);
+        if (iconEl && activeGroup) {
+            if (activeGroup.groupPhoto) {
+                iconEl.innerHTML = `<img src="${activeGroup.groupPhoto}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;" alt="Group">`;
+                iconEl.className = '';
+            } else {
+                iconEl.textContent = '🎲';
+                iconEl.className = 'logo';
+            }
+        }
+    });
 }
 
 async function renderHomeGroups(user) {
@@ -2152,6 +2170,7 @@ function beginVoteFlow() {
         winner: null,
         createdAt: new Date().toISOString()
     };
+    updateVotePageIcons();
     renderParticipantCards();
     goToPage('page-vote-participants');
 }
@@ -2161,6 +2180,8 @@ function openVote(voteId) {
     if (!vote) return;
     currentVote = vote;
     voteFilteredGames = vote.filteredGames || [];
+    
+    updateVotePageIcons();
 
     if (vote.status === 'completed') {
         const _scores = (vote.filteredGames||[]).map(g => {
