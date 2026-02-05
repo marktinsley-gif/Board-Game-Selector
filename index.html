@@ -365,6 +365,26 @@ button.ghost:hover { background:#667eea; color:white; }
         <button class="success" onclick="showCreateGroupModal()">+ Create New Group</button>
         <button class="ghost" onclick="showJoinGroupModal()">Join with Code</button>
       </div>
+      
+      <div id="create-group-panel" style="display:none; margin-top:16px; padding-top:16px; border-top:2px solid #e0e0e0;">
+        <div class="alert error" id="create-group-error"></div>
+        <h4>Create a New Group</h4>
+        <label for="new-group-name">Group Name</label>
+        <input type="text" id="new-group-name" placeholder="e.g. Friday Night Games">
+        <label>Invite existing users (optional, comma-separated usernames)</label>
+        <input type="text" id="new-group-invite" placeholder="alice, bob">
+        <button onclick="doCreateGroup()">Create Group</button>
+        <button class="secondary" onclick="hideCreateGroupModal()">Cancel</button>
+      </div>
+
+      <div id="join-group-panel" style="display:none; margin-top:16px; padding-top:16px; border-top:2px solid #e0e0e0;">
+        <div class="alert error" id="join-group-error"></div>
+        <h4>Join an Existing Group</h4>
+        <label for="join-code">Group Code</label>
+        <input type="text" id="join-code" placeholder="e.g. AB3X7K">
+        <button onclick="doJoinGroup()">Join Group</button>
+        <button class="secondary" onclick="hideJoinGroupModal()">Cancel</button>
+      </div>
     </div>
 
     <div class="section">
@@ -377,26 +397,6 @@ button.ghost:hover { background:#667eea; color:white; }
     <div id="admin-section" style="display:none;" class="section">
       <h3>Admin</h3>
       <button onclick="goToAdminPanel()">View Admin Panel</button>
-    </div>
-
-    <div id="create-group-panel" style="display:none;" class="section">
-      <div class="alert error" id="create-group-error"></div>
-      <h3>Create a New Group</h3>
-      <label for="new-group-name">Group Name</label>
-      <input type="text" id="new-group-name" placeholder="e.g. Friday Night Games">
-      <label>Invite existing users (optional, comma-separated usernames)</label>
-      <input type="text" id="new-group-invite" placeholder="alice, bob">
-      <button onclick="doCreateGroup()">Create Group</button>
-      <button class="secondary" onclick="hideCreateGroupModal()">Cancel</button>
-    </div>
-
-    <div id="join-group-panel" style="display:none;" class="section">
-      <div class="alert error" id="join-group-error"></div>
-      <h3>Join an Existing Group</h3>
-      <label for="join-code">Group Code</label>
-      <input type="text" id="join-code" placeholder="e.g. AB3X7K">
-      <button onclick="doJoinGroup()">Join Group</button>
-      <button class="secondary" onclick="hideJoinGroupModal()">Cancel</button>
     </div>
   </div>
 </div>
@@ -520,9 +520,19 @@ button.ghost:hover { background:#667eea; color:white; }
     <h2>Group Collection</h2>
     <p class="subtitle">Promote games you'd like to play with this group.</p>
     
-    <div class="checkbox-row" style="margin-bottom:16px;">
-      <input type="checkbox" id="gc-no-expansions" checked onchange="renderGroupCollection()">
-      <label for="gc-no-expansions">Exclude expansions</label>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+      <div class="checkbox-row" style="margin:0;">
+        <input type="checkbox" id="gc-no-expansions" checked onchange="renderGroupCollection()">
+        <label for="gc-no-expansions">Exclude expansions</label>
+      </div>
+      
+      <div style="display:flex; align-items:center; gap:8px;">
+        <label for="gc-sort-select" style="margin:0; font-size:14px;">Sort by:</label>
+        <select id="gc-sort-select" onchange="renderGroupCollection()" style="padding:6px 10px; border:2px solid #e0e0e0; border-radius:6px; font-size:14px;">
+          <option value="promotions">Promotions</option>
+          <option value="alphabetical">Alphabetical</option>
+        </select>
+      </div>
     </div>
     
     <button class="secondary" onclick="toggleGCFilters()" id="gc-filter-toggle" style="margin-bottom:12px;">Show Filters</button>
@@ -1104,6 +1114,13 @@ async function renderHomeGroups(user) {
 
     container.innerHTML = '<p style="color:#666; font-size:14px; padding:12px 0;">Loading…</p>';
     const groups = await Promise.all(user.groups.map(code => fsGetGroup(code)));
+    
+    // Sort groups alphabetically by name
+    groups.sort((a, b) => {
+        if (!a || !b) return 0;
+        return a.name.localeCompare(b.name);
+    });
+    
     container.innerHTML = '';
 
     groups.forEach(g => {
@@ -1863,13 +1880,23 @@ async function renderGroupCollection() {
     // Get promotions
     const promotions = activeGroup.groupPromotions || {};
     
-    // Score and sort by promotions
+    // Get sort preference
+    const sortBy = document.getElementById('gc-sort-select').value;
+    
+    // Score games by promotions (only promotions count, not vetoes)
     const scored = allGames.map(game => {
         const gp = promotions[game.id] || {};
         const promoteCount = Object.values(gp).filter(v => v === 'promote').length;
         return { game, gp, score: promoteCount };
     });
-    scored.sort((a, b) => b.score - a.score);
+    
+    // Sort based on user preference
+    if (sortBy === 'alphabetical') {
+        scored.sort((a, b) => a.game.name.localeCompare(b.game.name));
+    } else {
+        // Sort by promotions (default)
+        scored.sort((a, b) => b.score - a.score);
+    }
     
     document.getElementById('group-collection-count-label').textContent = 
         scored.length + ' game' + (scored.length !== 1 ? 's' : '') + ' in collection';
@@ -1877,17 +1904,23 @@ async function renderGroupCollection() {
     container.innerHTML = '';
     
     scored.forEach(({ game, gp }) => {
-        const myPromotion = gp[session.username] || 'neutral';
+        const myAction = gp[session.username] || 'neutral';
         const promotes = Object.entries(gp).filter(([,v]) => v === 'promote');
         
         const div = document.createElement('div');
-        div.className = 'game-item' + (myPromotion === 'promote' ? ' promoted' : '');
+        div.className = 'game-item' + (myAction === 'promote' ? ' promoted' : '');
         
         let promoteTags = '';
         if (promotes.length) {
             const tags = [];
             promotes.forEach(([u]) => { tags.push(`<span class="vote-tag promote">👍 ${u}</span>`); });
             promoteTags = `<div class="game-vote-summary">${tags.join('')}</div>`;
+        }
+        
+        // Show veto indicator only to the user who vetoed (private)
+        let vetoTag = '';
+        if (myAction === 'veto') {
+            vetoTag = '<div class="game-vote-summary"><span class="vote-tag veto">👎 You vetoed this</span></div>';
         }
         
         const imgHtml = `<div class="game-image-placeholder">${getGameInitials(game.name)}</div>`;
@@ -1900,10 +1933,12 @@ async function renderGroupCollection() {
                 <div class="game-details">${game.minPlayers}–${game.maxPlayers} players • ${game.playingTime} min • Complexity ${game.complexity.toFixed(1)} • Rating ${game.average.toFixed(1)}</div>
                 <div class="game-owners">Owned by: ${(game.owners||[]).join(', ')}</div>
                 ${promoteTags}
+                ${vetoTag}
             </div>
             <div class="game-actions">
-                ${myPromotion === 'neutral'
-                    ? `<button class="promote-btn" onclick="groupPromote('${game.id}','promote')">👍 Promote</button>`
+                ${myAction === 'neutral'
+                    ? `<button class="promote-btn" onclick="groupPromote('${game.id}','promote')">👍</button>
+                       <button class="danger" onclick="groupPromote('${game.id}','veto')">👎</button>`
                     : `<button class="secondary" onclick="groupPromote('${game.id}','neutral')">Undo</button>`}
             </div>
         `;
@@ -2635,21 +2670,23 @@ async function vfApply() {
     };
     showLoading(true);
     
-    // Import group promotions if requested
+    // Import group promotions and vetoes if requested
     if (currentVote.importPromotions && activeGroup.groupPromotions) {
         const groupPromos = activeGroup.groupPromotions;
         const participants = currentVote.participants;
         
-        // For each filtered game, check if any participants have promoted it in group collection
+        // For each filtered game, check if any participants have promoted/vetoed it in group collection
         voteFilteredGames.forEach(game => {
             const gamePromos = groupPromos[game.id];
             if (gamePromos) {
                 if (!currentVote.votes[game.id]) currentVote.votes[game.id] = {};
                 
-                // Import promotions from participants in this vote
+                // Import promotions and vetoes from participants in this vote
                 participants.forEach(username => {
                     if (gamePromos[username] === 'promote') {
                         currentVote.votes[game.id][username] = 'promote';
+                    } else if (gamePromos[username] === 'veto') {
+                        currentVote.votes[game.id][username] = 'veto';
                     }
                 });
             }
