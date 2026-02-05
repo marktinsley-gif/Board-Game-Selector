@@ -292,16 +292,51 @@ button.ghost:hover { background:#667eea; color:white; }
         <input type="password" id="reg-password" placeholder="••••••••" autocomplete="off">
         <label for="reg-password2">Confirm Password</label>
         <input type="password" id="reg-password2" placeholder="••••••••" autocomplete="off">
-        <button type="button" id="doRegister-btn" onclick="doRegister()" style="width:100%; margin:8px 0;">Create Account</button>
+        <button type="button" onclick="doRegister()" style="width:100%; margin:8px 0;">Create Account</button>
+      </div>
+    </div>
+  </div>
+</div>
 
-        <div id="reg-collection-section" style="display:none; margin-top:20px; padding-top:18px; border-top:2px solid #eee;">
-          <p style="font-size:13px; color:#666; margin-bottom:10px;"><strong>Optional:</strong> Upload your BGG collection now so it's ready when you join a group.</p>
-          <label for="reg-col-csv">Upload BGG CSV / TSV export</label>
-          <input type="file" id="reg-col-csv" accept=".csv,.tsv" onchange="loadCollectionCSVFrom('reg-col-csv')">
-          <div class="alert success" id="reg-collection-success" style="display:none;"></div>
-          <button type="button" onclick="goHome()" style="width:100%; margin-top:8px;">Continue to Home →</button>
+<!-- ════════════════════════════════════════════════════════════
+     PAGE: WELCOME (Post-Registration)
+     ════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-welcome">
+  <div class="container">
+    <div class="card" style="max-width:600px; margin:40px auto;">
+      <h1 style="color:#667eea; margin-bottom:16px;">🎉 Welcome!</h1>
+      <p style="font-size:18px; color:#333; margin-bottom:24px;">Your account has been created successfully.</p>
+      
+      <div style="background:#f8f9fa; border-radius:8px; padding:20px; margin-bottom:24px;">
+        <h3 style="margin-top:0;">Optional: Upload Your Game Collection</h3>
+        <p style="font-size:14px; color:#555; line-height:1.6; margin-bottom:16px;">
+          To get the most out of this app, you can upload your BoardGameGeek collection. This allows group votes to include your games when deciding what to play.
+        </p>
+        
+        <h4 style="font-size:15px; margin-bottom:8px;">What you'll need:</h4>
+        <ul style="font-size:14px; color:#555; line-height:1.7; padding-left:20px;">
+          <li>A <strong>BoardGameGeek account</strong></li>
+          <li>Games marked as <strong>"Owned"</strong> in your BGG collection</li>
+        </ul>
+        
+        <h4 style="font-size:15px; margin-bottom:8px; margin-top:16px;">How to get your CSV file:</h4>
+        <ol style="font-size:14px; color:#555; line-height:1.7; padding-left:20px;">
+          <li>Go to your <strong>BGG Collection</strong> page</li>
+          <li>Click on your username at the top</li>
+          <li>Select <strong>"Collection"</strong> from the menu</li>
+          <li>Look for the <strong>"Export"</strong> option (usually near the filters)</li>
+          <li>Download the <strong>CSV</strong> or <strong>TSV</strong> file</li>
+        </ol>
+        
+        <div style="margin-top:20px;">
+          <label for="welcome-col-csv" style="font-weight:600;">Upload your BGG collection (CSV or TSV):</label>
+          <input type="file" id="welcome-col-csv" accept=".csv,.tsv" onchange="loadCollectionCSVFrom('welcome-col-csv')" style="margin-top:8px;">
+          <div class="alert error" id="welcome-collection-error" style="display:none; margin-top:10px;"></div>
         </div>
       </div>
+      
+      <button onclick="skipWelcomeCollection()" class="secondary" style="width:100%;">Skip for now – Go to Home</button>
+      <p style="font-size:12px; color:#999; margin-top:12px;">You can always upload your collection later from your home page.</p>
     </div>
   </div>
 </div>
@@ -318,6 +353,8 @@ button.ghost:hover { background:#667eea; color:white; }
       </div>
       <button class="secondary" onclick="doLogout()">Log Out</button>
     </div>
+
+    <div class="alert success" id="home-success-message" style="display:none;"></div>
 
     <h2>My Groups</h2>
     <div id="home-groups"></div>
@@ -967,13 +1004,19 @@ async function doRegister() {
 
     session = { username };
     saveSession();
+    
+    // Clear form
     document.getElementById('reg-username').value = '';
     document.getElementById('reg-displayname').value = '';
     document.getElementById('reg-password').value = '';
     document.getElementById('reg-password2').value = '';
 
-    document.getElementById('reg-collection-section').style.display = 'block';
-    document.getElementById('doRegister-btn').style.display = 'none';
+    // Go to welcome page
+    goToPage('page-welcome');
+}
+
+function skipWelcomeCollection() {
+    goHome();
 }
 
 function doLogout() {
@@ -1001,6 +1044,20 @@ async function goHome() {
     
     // Show admin section if user is admin
     document.getElementById('admin-section').style.display = isAdmin(session.username) ? 'block' : 'none';
+    
+    // Check for upload success message
+    const successMsg = sessionStorage.getItem('uploadSuccess');
+    if (successMsg) {
+        const msgEl = document.getElementById('home-success-message');
+        msgEl.textContent = successMsg;
+        msgEl.style.display = 'block';
+        sessionStorage.removeItem('uploadSuccess');
+        
+        // Auto-hide after 5 seconds
+        setTimeout(() => {
+            msgEl.style.display = 'none';
+        }, 5000);
+    }
     
     renderHomeCollection();
     hideCreateGroupModal();
@@ -2131,10 +2188,10 @@ async function loadCollectionCSVFrom(inputId) {
 
         if (inputId === 'home-col-csv') {
             renderHomeCollection();
-        } else if (inputId === 'reg-col-csv') {
-            const el = document.getElementById('reg-collection-success');
-            el.textContent = `✓ Loaded ${games.length} games!`;
-            el.style.display = 'block';
+        } else if (inputId === 'welcome-col-csv') {
+            // Store success message for display on home page
+            sessionStorage.setItem('uploadSuccess', `✓ Successfully uploaded ${games.length} games to your collection!`);
+            goHome();
         } else {
             showAlert('collection-info', `Loaded ${games.length} games! You can continue or upload a different file.`);
             document.getElementById('collection-info').style.display = 'block';
@@ -2142,8 +2199,11 @@ async function loadCollectionCSVFrom(inputId) {
         }
     } catch(e) {
         showLoading(false);
-        if (inputId === 'reg-col-csv') showAlert('register-error', 'Upload error: ' + e.message);
-        else showAlert('collection-error', 'Error: ' + e.message);
+        if (inputId === 'welcome-col-csv') {
+            showAlert('welcome-collection-error', 'Upload error: ' + e.message);
+        } else {
+            showAlert('collection-error', 'Error: ' + e.message);
+        }
     }
     input.value = '';
 }
