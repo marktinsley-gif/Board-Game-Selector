@@ -720,7 +720,7 @@ button.ghost:hover { background:#667eea; color:white; }
     </div>
 
     <button onclick="vfApply()">Apply Filters</button>
-    <button class="secondary" onclick="goToPage('page-vote-participants')">Back</button>
+    <button class="secondary" onclick="goToVoteParticipants()">Back to Participants</button>
   </div>
 </div>
 
@@ -732,7 +732,7 @@ button.ghost:hover { background:#667eea; color:white; }
     <div class="topbar">
       <span id="vote-icon-voting" class="logo" onclick="goHome()">🎲</span>
       <div style="display:flex; gap:8px;">
-        <button class="secondary" style="padding:8px 12px; font-size:13px;" onclick="goToPage('page-vote-filters')">Filters</button>
+        <button class="secondary" style="padding:8px 12px; font-size:13px;" onclick="goToVoteFilters()">Filters</button>
         <button class="secondary" style="padding:8px 12px; font-size:13px;" onclick="goBackToGroup()">Group</button>
         <button class="secondary" onclick="doLogout()">Log Out</button>
       </div>
@@ -745,7 +745,7 @@ button.ghost:hover { background:#667eea; color:white; }
     <p style="font-size:13px; color:#666; margin-bottom:12px;" id="vote-count-label"></p>
     <div id="voting-list"></div>
     <button onclick="voteFinish()">See Suggested Game</button>
-    <button class="secondary" onclick="goToPage('page-vote-filters')">Back to Filters</button>
+    <button class="secondary" onclick="goToVoteFilters()">Back to Filters</button>
     <button class="secondary" onclick="goBackToGroup()">Back to Group</button>
     <button class="danger" onclick="confirmDeleteVote()">Delete Vote</button>
   </div>
@@ -759,7 +759,7 @@ button.ghost:hover { background:#667eea; color:white; }
     <div class="topbar">
       <span id="vote-icon-result" class="logo" onclick="goHome()">🎲</span>
       <div style="display:flex; gap:8px;">
-        <button class="secondary" style="padding:8px 12px; font-size:13px;" onclick="goToPage('page-vote-filters')">Filters</button>
+        <button class="secondary" style="padding:8px 12px; font-size:13px;" onclick="goToVoteFilters()">Filters</button>
         <button class="secondary" style="padding:8px 12px; font-size:13px;" onclick="goBackToGroup()">Group</button>
         <button class="secondary" onclick="doLogout()">Log Out</button>
       </div>
@@ -2405,10 +2405,15 @@ async function startNewVote() {
         return;
     }
     pendingVoteAction = null;
-    beginVoteFlow();
+    await beginVoteFlow();
 }
 
-function beginVoteFlow() {
+async function beginVoteFlow() {
+    // Ensure activeGroup is loaded
+    if (!activeGroup) {
+        activeGroup = await fsGetGroup(activeGroupCode);
+    }
+    
     currentVote = {
         id: generateVoteId(),
         groupCode: activeGroupCode,
@@ -2423,8 +2428,31 @@ function beginVoteFlow() {
         createdAt: new Date().toISOString()
     };
     updateVotePageIcons();
-    renderParticipantCards();
+    await renderParticipantCards();
     goToPage('page-vote-participants');
+}
+
+async function goToVoteParticipants() {
+    // Ensure activeGroup is loaded
+    if (!activeGroup || activeGroup.code !== currentVote.groupCode) {
+        activeGroup = await fsGetGroup(currentVote.groupCode);
+    }
+    
+    updateVotePageIcons();
+    await renderParticipantCards();
+    goToPage('page-vote-participants');
+}
+
+async function goToVoteFilters() {
+    // Ensure activeGroup is loaded
+    if (!activeGroup || activeGroup.code !== currentVote.groupCode) {
+        activeGroup = await fsGetGroup(currentVote.groupCode);
+    }
+    
+    // Initialize sliders (will restore saved values)
+    initSliders();
+    updateVotePageIcons();
+    goToPage('page-vote-filters');
 }
 
 function openVote(voteId) {
@@ -2493,8 +2521,8 @@ async function renderParticipantCards() {
         container.appendChild(div);
     });
 
-    // Fetch display names and update labels
-    Promise.all(activeGroup.members.map(u => fsGetUser(u))).then(users => {
+    // Fetch display names and update labels, then restore selections
+    await Promise.all(activeGroup.members.map(u => fsGetUser(u))).then(users => {
         users.forEach(u => {
             if (!u) return;
             const label = document.querySelector(`label[for="pc-check-${u.username}"]`);
@@ -2503,36 +2531,41 @@ async function renderParticipantCards() {
     });
     
     // Restore previously selected participants if returning to this page
-    if (currentVote && currentVote.participants) {
-        currentVote.participants.forEach(username => {
-            const mainCb = document.getElementById('pc-check-' + username);
-            if (mainCb) {
-                mainCb.checked = true;
-                const card = document.getElementById('pc-' + username);
-                if (card) {
-                    card.classList.add('selected');
-                    const gamesCb = document.getElementById('pc-games-' + username);
-                    if (gamesCb) {
-                        gamesCb.disabled = false;
-                        // Check if this user's games were included
-                        if (currentVote.includeGamesFrom && currentVote.includeGamesFrom.includes(username)) {
-                            gamesCb.checked = true;
+    // Use setTimeout to ensure DOM is fully ready
+    setTimeout(() => {
+        if (currentVote && currentVote.participants) {
+            currentVote.participants.forEach(username => {
+                const mainCb = document.getElementById('pc-check-' + username);
+                if (mainCb) {
+                    mainCb.checked = true;
+                    const card = document.getElementById('pc-' + username);
+                    if (card) {
+                        card.classList.add('selected');
+                        const gamesCb = document.getElementById('pc-games-' + username);
+                        if (gamesCb) {
+                            gamesCb.disabled = false;
+                            // Check if this user's games were included
+                            if (currentVote.includeGamesFrom && currentVote.includeGamesFrom.includes(username)) {
+                                gamesCb.checked = true;
+                            }
                         }
                     }
                 }
-            }
-        });
-    }
-    
-    // Restore vote name if it was set
-    if (currentVote && currentVote.voteName) {
-        document.getElementById('vote-name-input').value = currentVote.voteName;
-    }
-    
-    // Restore import promotions checkbox
-    if (currentVote && typeof currentVote.importPromotions !== 'undefined') {
-        document.getElementById('import-group-promotions').checked = currentVote.importPromotions;
-    }
+            });
+        }
+        
+        // Restore vote name if it was set
+        if (currentVote && currentVote.voteName) {
+            const nameInput = document.getElementById('vote-name-input');
+            if (nameInput) nameInput.value = currentVote.voteName;
+        }
+        
+        // Restore import promotions checkbox
+        if (currentVote && typeof currentVote.importPromotions !== 'undefined') {
+            const importCb = document.getElementById('import-group-promotions');
+            if (importCb) importCb.checked = currentVote.importPromotions;
+        }
+    }, 100);
 }
 
 function syncPC(username, card) {
