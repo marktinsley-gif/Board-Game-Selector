@@ -455,7 +455,7 @@ button.ghost:hover { background:#667eea; color:white; }
 <div class="page" id="page-group-members">
   <div class="card">
     <div class="topbar">
-      <span class="logo" onclick="goHome()">🎲</span>
+      <span id="gm-icon-header" class="logo" onclick="goHome()">🎲</span>
       <button class="secondary" onclick="doLogout()">Log Out</button>
     </div>
     <h2>Current Members</h2>
@@ -483,7 +483,7 @@ button.ghost:hover { background:#667eea; color:white; }
 <div class="page" id="page-group-details">
   <div class="card">
     <div class="topbar">
-      <span class="logo" onclick="goHome()">🎲</span>
+      <span id="gd-icon-header" class="logo" onclick="goHome()">🎲</span>
       <button class="secondary" onclick="doLogout()">Log Out</button>
     </div>
     <h2 id="group-details-name"></h2>
@@ -514,7 +514,7 @@ button.ghost:hover { background:#667eea; color:white; }
 <div class="page" id="page-group-collection">
   <div class="card">
     <div class="topbar">
-      <span class="logo" onclick="goHome()">🎲</span>
+      <span id="gc-icon-header" class="logo" onclick="goHome()">🎲</span>
       <button class="secondary" onclick="doLogout()">Log Out</button>
     </div>
     <h2>Group Collection</h2>
@@ -1281,6 +1281,17 @@ async function viewGroupMembers() {
     showLoading(false);
     
     document.getElementById('group-members-code-display').textContent = activeGroup.code;
+    
+    // Set group icon
+    const iconEl = document.getElementById('gm-icon-header');
+    if (activeGroup.groupPhoto) {
+        iconEl.innerHTML = `<img src="${activeGroup.groupPhoto}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;" alt="Group">`;
+        iconEl.className = '';
+    } else {
+        iconEl.textContent = '🎲';
+        iconEl.className = 'logo';
+    }
+    
     await renderGroupMembersList();
     goToPage('page-group-members');
 }
@@ -1369,6 +1380,16 @@ async function viewGroupDetails() {
     showLoading(false);
     
     document.getElementById('group-details-name').textContent = activeGroup.name;
+    
+    // Set group icon
+    const iconEl = document.getElementById('gd-icon-header');
+    if (activeGroup.groupPhoto) {
+        iconEl.innerHTML = `<img src="${activeGroup.groupPhoto}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;" alt="Group">`;
+        iconEl.className = '';
+    } else {
+        iconEl.textContent = '🎲';
+        iconEl.className = 'logo';
+    }
     
     // Show admin-only sections
     const isAdmin = isGroupAdmin(session.username);
@@ -1724,6 +1745,16 @@ async function viewGroupCollection() {
     // Initialize groupPromotions if it doesn't exist
     if (!activeGroup.groupPromotions) {
         activeGroup.groupPromotions = {};
+    }
+    
+    // Set group icon
+    const iconEl = document.getElementById('gc-icon-header');
+    if (activeGroup.groupPhoto) {
+        iconEl.innerHTML = `<img src="${activeGroup.groupPhoto}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;" alt="Group">`;
+        iconEl.className = '';
+    } else {
+        iconEl.textContent = '🎲';
+        iconEl.className = 'logo';
     }
     
     // Initialize sliders for group collection filters
@@ -2470,6 +2501,38 @@ async function renderParticipantCards() {
             if (label) label.textContent = u.displayName;
         });
     });
+    
+    // Restore previously selected participants if returning to this page
+    if (currentVote && currentVote.participants) {
+        currentVote.participants.forEach(username => {
+            const mainCb = document.getElementById('pc-check-' + username);
+            if (mainCb) {
+                mainCb.checked = true;
+                const card = document.getElementById('pc-' + username);
+                if (card) {
+                    card.classList.add('selected');
+                    const gamesCb = document.getElementById('pc-games-' + username);
+                    if (gamesCb) {
+                        gamesCb.disabled = false;
+                        // Check if this user's games were included
+                        if (currentVote.includeGamesFrom && currentVote.includeGamesFrom.includes(username)) {
+                            gamesCb.checked = true;
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    // Restore vote name if it was set
+    if (currentVote && currentVote.voteName) {
+        document.getElementById('vote-name-input').value = currentVote.voteName;
+    }
+    
+    // Restore import promotions checkbox
+    if (currentVote && typeof currentVote.importPromotions !== 'undefined') {
+        document.getElementById('import-group-promotions').checked = currentVote.importPromotions;
+    }
 }
 
 function syncPC(username, card) {
@@ -2494,6 +2557,7 @@ async function vpContinue() {
     currentVote.importPromotions = importPromotions;
     
     const participants = [];
+    const includeGamesFrom = []; // Track whose games are included
     const gameMap = new Map();
 
     // Fetch all users to get their collections
@@ -2509,6 +2573,7 @@ async function vpContinue() {
         participants.push(username);
         const gcb = document.getElementById('pc-games-' + username);
         if (gcb && gcb.checked) {
+            includeGamesFrom.push(username);
             const games = u.games || [];
             games.forEach(game => {
                 if (!gameMap.has(game.id)) {
@@ -2523,6 +2588,7 @@ async function vpContinue() {
     if (participants.length === 0) { showAlert('vp-error','Select at least one participant'); return; }
 
     currentVote.participants = participants;
+    currentVote.includeGamesFrom = includeGamesFrom; // Save this for restoration
     const allGames = Array.from(gameMap.values());
     if (allGames.length === 0) { showAlert('vp-error','No games available – include at least one collection'); return; }
 
@@ -2544,6 +2610,38 @@ function initSliders() {
     sliders.complexity = new DualRange('dr-complexity', { min:1, max:5, step:0.1, minVal:1, maxVal:5, labelEl:'complexity-label', fmt: (a,b) => a.toFixed(1)+' – '+b.toFixed(1) });
     sliders.rating = new DualRange('dr-rating', { min:1, max:10, step:0.1, minVal:1, maxVal:10, labelEl:'rating-label', fmt: (a,b) => a.toFixed(1)+' – '+b.toFixed(1) });
     sliders.playerCount = new DualRange('dr-players', { min:1, max:20, step:1, minVal:2, maxVal:6, labelEl:'player-range-label', fmt: (a,b) => a+' – '+b });
+    
+    // Restore filter values if returning to this page
+    if (currentVote && currentVote.filters && Object.keys(currentVote.filters).length > 0) {
+        const f = currentVote.filters;
+        
+        // Restore checkboxes
+        if (typeof f.noExp !== 'undefined') document.getElementById('filter-no-expansions').checked = f.noExp;
+        if (typeof f.recOnly !== 'undefined') document.getElementById('filter-rec-players').checked = f.recOnly;
+        if (typeof f.bestOnly !== 'undefined') document.getElementById('filter-best-players').checked = f.bestOnly;
+        if (typeof f.useRange !== 'undefined') {
+            document.getElementById('filter-player-range').checked = f.useRange;
+            togglePlayerCountRange();
+        }
+        if (typeof f.allPlayerCounts !== 'undefined') document.getElementById('filter-all-player-counts').checked = f.allPlayerCounts;
+        
+        // Restore player count
+        if (f.players) document.getElementById('filter-players').value = f.players;
+        
+        // Restore slider values
+        if (f.playerMin !== undefined && f.playerMax !== undefined) {
+            sliders.playerCount.setValues(f.playerMin, f.playerMax);
+        }
+        if (f.tMin !== undefined && f.tMax !== undefined) {
+            sliders.time.setValues(f.tMin, f.tMax);
+        }
+        if (f.cMin !== undefined && f.cMax !== undefined) {
+            sliders.complexity.setValues(f.cMin, f.cMax);
+        }
+        if (f.rMin !== undefined && f.rMax !== undefined) {
+            sliders.rating.setValues(f.rMin, f.rMax);
+        }
+    }
 }
 
 function togglePlayerCountRange() {
