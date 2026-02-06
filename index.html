@@ -2433,9 +2433,13 @@ async function beginVoteFlow() {
 }
 
 async function goToVoteParticipants() {
-    // Ensure activeGroup is loaded
-    if (!activeGroup || activeGroup.code !== currentVote.groupCode) {
-        activeGroup = await fsGetGroup(currentVote.groupCode);
+    // Reload activeGroup and currentVote from database
+    activeGroup = await fsGetGroup(currentVote.groupCode);
+    
+    // Reload the vote to get latest saved state
+    const savedVote = activeGroup.votes[currentVote.id];
+    if (savedVote) {
+        currentVote = savedVote;
     }
     
     updateVotePageIcons();
@@ -2444,9 +2448,35 @@ async function goToVoteParticipants() {
 }
 
 async function goToVoteFilters() {
-    // Ensure activeGroup is loaded
-    if (!activeGroup || activeGroup.code !== currentVote.groupCode) {
-        activeGroup = await fsGetGroup(currentVote.groupCode);
+    // Reload activeGroup and currentVote from database
+    activeGroup = await fsGetGroup(currentVote.groupCode);
+    
+    // Reload the vote to get latest saved state
+    const savedVote = activeGroup.votes[currentVote.id];
+    if (savedVote) {
+        currentVote = savedVote;
+    }
+    
+    // Rebuild _allGames if not present (needed for filter application)
+    if (!currentVote._allGames && currentVote.includeGamesFrom) {
+        const gameMap = new Map();
+        const members = await Promise.all(currentVote.includeGamesFrom.map(username => fsGetUser(username)));
+        
+        for (const u of members) {
+            if (!u) continue;
+            const games = u.games || [];
+            games.forEach(game => {
+                if (!gameMap.has(game.id)) {
+                    gameMap.set(game.id, { ...game, owners: [u.username] });
+                } else {
+                    gameMap.get(game.id).owners.push(u.username);
+                }
+            });
+        }
+        
+        const allGames = Array.from(gameMap.values());
+        allGames.sort((a, b) => a.name.localeCompare(b.name));
+        currentVote._allGames = allGames;
     }
     
     updateVotePageIcons();
@@ -2635,6 +2665,11 @@ async function vpContinue() {
     allGames.sort((a, b) => a.name.localeCompare(b.name));
 
     currentVote._allGames = allGames;
+    
+    // Save vote to database so it persists across navigation
+    activeGroup.votes[currentVote.id] = currentVote;
+    await fsSaveGroup(activeGroup);
+    
     document.getElementById('filter-players').value = participants.length;
     initSliders();
     goToPage('page-vote-filters');
