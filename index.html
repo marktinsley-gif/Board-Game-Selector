@@ -2520,6 +2520,12 @@ function openVote(voteId) {
 async function renderParticipantCards() {
     const container = document.getElementById('vp-cards');
     container.innerHTML = '';
+    
+    // Safety check - ensure activeGroup is loaded
+    if (!activeGroup || !activeGroup.members) {
+        container.innerHTML = '<p style="color:#c33;">Error: Group data not loaded. Please go back to the group page.</p>';
+        return;
+    }
 
     // Fetch all members to get their game collections
     const members = await Promise.all(activeGroup.members.map(username => fsGetUser(username)));
@@ -2557,7 +2563,7 @@ async function renderParticipantCards() {
         container.appendChild(div);
     });
 
-    // Fetch display names and update labels, then restore selections
+    // Fetch display names and update labels
     await Promise.all(activeGroup.members.map(u => fsGetUser(u))).then(users => {
         users.forEach(u => {
             if (!u) return;
@@ -2567,41 +2573,41 @@ async function renderParticipantCards() {
     });
     
     // Restore previously selected participants if returning to this page
-    // Use setTimeout to ensure DOM is fully ready
-    setTimeout(() => {
-        if (currentVote && currentVote.participants) {
-            currentVote.participants.forEach(username => {
-                const mainCb = document.getElementById('pc-check-' + username);
-                if (mainCb) {
-                    mainCb.checked = true;
-                    const card = document.getElementById('pc-' + username);
-                    if (card) {
-                        card.classList.add('selected');
-                        const gamesCb = document.getElementById('pc-games-' + username);
-                        if (gamesCb) {
-                            gamesCb.disabled = false;
-                            // Check if this user's games were included
-                            if (currentVote.includeGamesFrom && currentVote.includeGamesFrom.includes(username)) {
-                                gamesCb.checked = true;
-                            }
+    // Wait a bit for DOM to be ready, then restore
+    await new Promise(resolve => setTimeout(resolve, 50));
+    
+    if (currentVote && currentVote.participants && currentVote.participants.length > 0) {
+        currentVote.participants.forEach(username => {
+            const mainCb = document.getElementById('pc-check-' + username);
+            if (mainCb) {
+                mainCb.checked = true;
+                const card = document.getElementById('pc-' + username);
+                if (card) {
+                    card.classList.add('selected');
+                    const gamesCb = document.getElementById('pc-games-' + username);
+                    if (gamesCb) {
+                        gamesCb.disabled = false;
+                        // Check if this user's games were included
+                        if (currentVote.includeGamesFrom && currentVote.includeGamesFrom.includes(username)) {
+                            gamesCb.checked = true;
                         }
                     }
                 }
-            });
-        }
-        
-        // Restore vote name if it was set
-        if (currentVote && currentVote.voteName) {
-            const nameInput = document.getElementById('vote-name-input');
-            if (nameInput) nameInput.value = currentVote.voteName;
-        }
-        
-        // Restore import promotions checkbox
-        if (currentVote && typeof currentVote.importPromotions !== 'undefined') {
-            const importCb = document.getElementById('import-group-promotions');
-            if (importCb) importCb.checked = currentVote.importPromotions;
-        }
-    }, 100);
+            }
+        });
+    }
+    
+    // Restore vote name if it was set
+    if (currentVote && currentVote.voteName) {
+        const nameInput = document.getElementById('vote-name-input');
+        if (nameInput) nameInput.value = currentVote.voteName;
+    }
+    
+    // Restore import promotions checkbox
+    if (currentVote && typeof currentVote.importPromotions !== 'undefined') {
+        const importCb = document.getElementById('import-group-promotions');
+        if (importCb) importCb.checked = currentVote.importPromotions;
+    }
 }
 
 function syncPC(username, card) {
