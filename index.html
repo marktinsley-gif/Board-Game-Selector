@@ -2449,10 +2449,16 @@ async function goToVoteFilters() {
         activeGroup = await fsGetGroup(currentVote.groupCode);
     }
     
-    // Initialize sliders (will restore saved values)
-    initSliders();
     updateVotePageIcons();
     goToPage('page-vote-filters');
+    
+    // Set default player count if not set (after page is visible)
+    if (currentVote.participants && currentVote.participants.length > 0) {
+        document.getElementById('filter-players').value = currentVote.participants.length;
+    }
+    
+    // Initialize sliders after page is loaded (will restore saved values)
+    initSliders();
 }
 
 function openVote(voteId) {
