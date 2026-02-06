@@ -2623,6 +2623,16 @@ function syncPC(username, card) {
 async function vpContinue() {
     hideAlert('vp-error');
     
+    // Ensure activeGroup is loaded
+    if (!activeGroup || !activeGroup.members) {
+        showAlert('vp-error', 'Group data not loaded. Reloading...');
+        activeGroup = await fsGetGroup(currentVote.groupCode);
+        if (!activeGroup) {
+            showAlert('vp-error', 'Failed to load group data. Please try again.');
+            return;
+        }
+    }
+    
     // Capture optional vote name
     const voteName = document.getElementById('vote-name-input').value.trim();
     currentVote.voteName = voteName;
