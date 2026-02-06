@@ -2686,9 +2686,12 @@ async function vpContinue() {
     activeGroup.votes[currentVote.id] = currentVote;
     await fsSaveGroup(activeGroup);
     
+    // Navigate to filters page FIRST
+    goToPage('page-vote-filters');
+    
+    // THEN set values and initialize sliders (after DOM exists)
     document.getElementById('filter-players').value = participants.length;
     initSliders();
-    goToPage('page-vote-filters');
 }
 
 // ── Filters ──
