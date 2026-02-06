@@ -2433,8 +2433,8 @@ async function beginVoteFlow() {
 }
 
 async function goToVoteParticipants() {
-    // Reload activeGroup and currentVote from database
-    activeGroup = await fsGetGroup(currentVote.groupCode);
+    // Reload activeGroup from database using the global activeGroupCode
+    activeGroup = await fsGetGroup(activeGroupCode);
     
     // Reload the vote to get latest saved state
     const savedVote = activeGroup.votes[currentVote.id];
@@ -2448,8 +2448,8 @@ async function goToVoteParticipants() {
 }
 
 async function goToVoteFilters() {
-    // Reload activeGroup and currentVote from database
-    activeGroup = await fsGetGroup(currentVote.groupCode);
+    // Reload activeGroup from database using the global activeGroupCode
+    activeGroup = await fsGetGroup(activeGroupCode);
     
     // Reload the vote to get latest saved state
     const savedVote = activeGroup.votes[currentVote.id];
@@ -2623,10 +2623,10 @@ function syncPC(username, card) {
 async function vpContinue() {
     hideAlert('vp-error');
     
-    // Ensure activeGroup is loaded
+    // Ensure activeGroup is loaded using the global activeGroupCode
     if (!activeGroup || !activeGroup.members) {
         showAlert('vp-error', 'Group data not loaded. Reloading...');
-        activeGroup = await fsGetGroup(currentVote.groupCode);
+        activeGroup = await fsGetGroup(activeGroupCode);
         if (!activeGroup) {
             showAlert('vp-error', 'Failed to load group data. Please try again.');
             return;
