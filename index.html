@@ -661,7 +661,10 @@ button.ghost:hover { background:#667eea; color:white; }
     </div>
 
     <label>Number of Players</label>
-    <input type="number" id="filter-players" min="1" max="20" value="4" style="max-width:120px;">
+    <div style="display:flex; align-items:center; gap:12px;">
+      <input type="number" id="filter-players" min="1" max="20" value="4" style="max-width:120px;">
+      <span id="player-count-warning" style="color:#856404; font-size:13px; display:none;"></span>
+    </div>
     
     <div class="checkbox-row" style="margin-top:8px; margin-bottom:12px;">
       <input type="checkbox" id="filter-player-range" onchange="togglePlayerCountRange()">
@@ -677,6 +680,8 @@ button.ghost:hover { background:#667eea; color:white; }
           <div class="dual-range-thumb dual-range-thumb-max"></div>
         </div>
       </div>
+      
+      <div id="player-range-warning" style="color:#856404; font-size:13px; margin-bottom:8px; display:none;"></div>
       
       <div class="checkbox-row" style="margin-top:0px; margin-bottom:8px;">
         <input type="checkbox" id="filter-all-player-counts">
@@ -2482,8 +2487,15 @@ async function goToVoteFilters() {
     updateVotePageIcons();
     goToPage('page-vote-filters');
     
-    // Set default player count if not set (after page is visible)
-    if (currentVote.participants && currentVote.participants.length > 0) {
+    // Clear any warnings
+    document.getElementById('player-count-warning').style.display = 'none';
+    document.getElementById('player-range-warning').style.display = 'none';
+    
+    // Set player count - use saved value if exists, otherwise default to participant count
+    const hasSavedFilters = currentVote.filters && Object.keys(currentVote.filters).length > 0;
+    if (hasSavedFilters && currentVote.filters.players) {
+        document.getElementById('filter-players').value = currentVote.filters.players;
+    } else if (currentVote.participants && currentVote.participants.length > 0) {
         document.getElementById('filter-players').value = currentVote.participants.length;
     }
     
@@ -2682,6 +2694,32 @@ async function vpContinue() {
 
     currentVote._allGames = allGames;
     
+    // Check if participant count changed and we need to update player count
+    const hasSavedFilters = currentVote.filters && Object.keys(currentVote.filters).length > 0;
+    let playerCountWarning = '';
+    let showRangeWarning = false;
+    
+    if (hasSavedFilters) {
+        const useRange = currentVote.filters.useRange;
+        const oldPlayerCount = currentVote.filters.players || participants.length;
+        
+        if (useRange) {
+            // Using range mode - never auto-update, just warn
+            playerCountWarning = 'Player count range not updated. Please review filters.';
+            showRangeWarning = true;
+        } else {
+            // Using exact player count
+            if (participants.length > oldPlayerCount) {
+                // More participants now - update player count
+                currentVote.filters.players = participants.length;
+                playerCountWarning = `Updated from ${oldPlayerCount} to ${participants.length}. Please review.`;
+            } else if (participants.length < oldPlayerCount) {
+                // Fewer participants now - don't update, just warn
+                playerCountWarning = 'Not updated. Please review filters.';
+            }
+        }
+    }
+    
     // Save vote to database so it persists across navigation
     activeGroup.votes[currentVote.id] = currentVote;
     await fsSaveGroup(activeGroup);
@@ -2690,8 +2728,28 @@ async function vpContinue() {
     goToPage('page-vote-filters');
     
     // THEN set values and initialize sliders (after DOM exists)
-    document.getElementById('filter-players').value = participants.length;
+    if (!hasSavedFilters || !currentVote.filters.useRange) {
+        // Set player count from saved filters or default to participant count
+        const playerCount = (hasSavedFilters && currentVote.filters.players) ? currentVote.filters.players : participants.length;
+        document.getElementById('filter-players').value = playerCount;
+    }
+    
     initSliders();
+    
+    // Show warning if participant count changed
+    if (playerCountWarning) {
+        if (showRangeWarning) {
+            // Show warning below range slider
+            const rangeWarningEl = document.getElementById('player-range-warning');
+            rangeWarningEl.textContent = playerCountWarning;
+            rangeWarningEl.style.display = 'block';
+        } else {
+            // Show warning next to player count input
+            const warningEl = document.getElementById('player-count-warning');
+            warningEl.textContent = playerCountWarning;
+            warningEl.style.display = 'inline';
+        }
+    }
 }
 
 // ── Filters ──
@@ -2704,8 +2762,11 @@ function initSliders() {
     sliders.rating = new DualRange('dr-rating', { min:1, max:10, step:0.1, minVal:1, maxVal:10, labelEl:'rating-label', fmt: (a,b) => a.toFixed(1)+' – '+b.toFixed(1) });
     sliders.playerCount = new DualRange('dr-players', { min:1, max:20, step:1, minVal:2, maxVal:6, labelEl:'player-range-label', fmt: (a,b) => a+' – '+b });
     
-    // Restore filter values if returning to this page
-    if (currentVote && currentVote.filters && Object.keys(currentVote.filters).length > 0) {
+    // Check if we have saved filters to restore
+    const hasSavedFilters = currentVote && currentVote.filters && Object.keys(currentVote.filters).length > 0;
+    
+    if (hasSavedFilters) {
+        // Restore filter values from saved state
         const f = currentVote.filters;
         
         // Restore checkboxes
@@ -2734,6 +2795,14 @@ function initSliders() {
         if (f.rMin !== undefined && f.rMax !== undefined) {
             sliders.rating.setValues(f.rMin, f.rMax);
         }
+    } else {
+        // No saved filters - set defaults for new vote
+        document.getElementById('filter-no-expansions').checked = true;
+        document.getElementById('filter-rec-players').checked = false;
+        document.getElementById('filter-best-players').checked = false;
+        document.getElementById('filter-player-range').checked = false;
+        document.getElementById('filter-all-player-counts').checked = false;
+        togglePlayerCountRange(); // Ensure UI matches
     }
 }
 
