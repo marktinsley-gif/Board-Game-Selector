@@ -862,7 +862,7 @@ button.ghost:hover { background:#667eea; color:white; }
     
     <div class="checkbox-row" style="margin-top:12px; margin-bottom:16px;">
       <input type="checkbox" id="import-group-promotions" checked>
-      <label for="import-group-promotions">Import promotions from group collection</label>
+      <label for="import-group-promotions">Import promotions from event collection</label>
     </div>
     
     <div class="participant-grid" id="vp-cards"></div>
@@ -966,7 +966,7 @@ button.ghost:hover { background:#667eea; color:white; }
       <span id="vote-icon-voting" class="logo" onclick="goHome()">🎲</span>
       <div style="display:flex; gap:8px;">
         <button class="secondary" style="padding:8px 12px; font-size:13px;" onclick="goToVoteFilters()">Filters</button>
-        <button class="secondary" style="padding:8px 12px; font-size:13px;" onclick="goBackToGroup()">Group</button>
+        <button class="secondary" style="padding:8px 12px; font-size:13px;" id="vote-voting-back-btn" onclick="goBackToGroup()">Group</button>
         <button class="secondary" onclick="doLogout()">Log Out</button>
       </div>
     </div>
@@ -979,7 +979,7 @@ button.ghost:hover { background:#667eea; color:white; }
     <div id="voting-list"></div>
     <button onclick="voteFinish()">See Suggested Game</button>
     <button class="secondary" onclick="goToVoteFilters()">Back to Filters</button>
-    <button class="secondary" onclick="goBackToGroup()">Back to Group</button>
+    <button class="secondary" id="vote-voting-back-bottom" onclick="goBackToGroup()">Back to Group</button>
     <button class="danger" onclick="confirmDeleteVote()">Delete Vote</button>
   </div>
 </div>
@@ -993,7 +993,7 @@ button.ghost:hover { background:#667eea; color:white; }
       <span id="vote-icon-result" class="logo" onclick="goHome()">🎲</span>
       <div style="display:flex; gap:8px;">
         <button class="secondary" style="padding:8px 12px; font-size:13px;" onclick="goToVoteFilters()">Filters</button>
-        <button class="secondary" style="padding:8px 12px; font-size:13px;" onclick="goBackToGroup()">Group</button>
+        <button class="secondary" style="padding:8px 12px; font-size:13px;" id="vote-result-back-btn" onclick="goBackToGroup()">Group</button>
         <button class="secondary" onclick="doLogout()">Log Out</button>
       </div>
     </div>
@@ -1001,7 +1001,7 @@ button.ghost:hover { background:#667eea; color:white; }
     <div id="result-winner"></div>
     <button class="success" onclick="suggestAnother()">Suggest Another</button>
     <button class="secondary" onclick="goToPage('page-vote-voting')">Back to Voting</button>
-    <button onclick="goBackToGroup()">Back to Group</button>
+    <button id="vote-result-back-bottom" onclick="goBackToGroup()">Back to Group</button>
     <button class="danger" onclick="confirmDeleteVote()">Delete Vote</button>
   </div>
 </div>
@@ -3254,14 +3254,14 @@ async function vfApply() {
     
     showLoading(true);
     
-    // Import group promotions and vetoes if requested
-    if (currentVote.importPromotions && activeGroup.groupPromotions) {
-        const groupPromos = activeGroup.groupPromotions;
+    // Import promotions if requested - use event promotions for event votes
+    if (currentVote.importPromotions) {
+        const isEventVote = currentVote && currentVote.eventId;
+        const promotions = isEventVote ? (currentEvent.eventPromotions || {}) : (activeGroup.groupPromotions || {});
         const participants = currentVote.participants;
         
-        // For each filtered game, check if any participants have promoted/vetoed it in group collection
         voteFilteredGames.forEach(game => {
-            const gamePromos = groupPromos[game.id];
+            const gamePromos = promotions[game.id];
             if (gamePromos) {
                 if (!currentVote.votes[game.id]) currentVote.votes[game.id] = {};
                 
@@ -3351,6 +3351,19 @@ function renderVotingList() {
     const container = document.getElementById('voting-list');
     const hideVetoed = document.getElementById('vote-hide-vetoed').checked;
     const votes = currentVote.votes || {};
+    
+    // Update button text for event votes
+    const isEventVote = currentVote && currentVote.eventId;
+    const backBtnTop = document.getElementById('vote-voting-back-btn');
+    const backBtnBottom = document.getElementById('vote-voting-back-bottom');
+    if (backBtnTop) {
+        backBtnTop.textContent = isEventVote ? 'Event' : 'Group';
+        backBtnTop.onclick = isEventVote ? goBackToEvent : goBackToGroup;
+    }
+    if (backBtnBottom) {
+        backBtnBottom.textContent = isEventVote ? 'Back to Event' : 'Back to Group';
+        backBtnBottom.onclick = isEventVote ? goBackToEvent : goBackToGroup;
+    }
 
     const scored = voteFilteredGames.map(game => {
         const gv = votes[game.id] || {};
@@ -3462,6 +3475,19 @@ function suggestAnother() {
 }
 
 function renderResultPage(game, vote, tiedCount) {
+    // Update button text for event votes
+    const isEventVote = vote && vote.eventId;
+    const backBtnTop = document.getElementById('vote-result-back-btn');
+    const backBtnBottom = document.getElementById('vote-result-back-bottom');
+    if (backBtnTop) {
+        backBtnTop.textContent = isEventVote ? 'Event' : 'Group';
+        backBtnTop.onclick = isEventVote ? goBackToEvent : goBackToGroup;
+    }
+    if (backBtnBottom) {
+        backBtnBottom.textContent = isEventVote ? 'Back to Event' : 'Back to Group';
+        backBtnBottom.onclick = isEventVote ? goBackToEvent : goBackToGroup;
+    }
+    
     const container = document.getElementById('result-winner');
     const gv = (vote.votes || {})[game.id] || {};
     const promotes = Object.values(gv).filter(v => v === 'promote').length;
@@ -4441,6 +4467,7 @@ async function renderEventAttendees() {
     
     // Get attendee statuses
     const attendeeStatuses = currentEvent.attendeeStatuses || {};
+    const scheduledGames = currentEvent.scheduledGames || {};
     
     members.forEach(u => {
         if (!u) return;
@@ -4453,16 +4480,21 @@ async function renderEventAttendees() {
         const hasLeft = status === 'left';
         
         // Check if user is in a scheduled game
-        const scheduledGames = currentEvent.scheduledGames || {};
-        const isInGame = Object.values(scheduledGames).some(sg => 
+        const userScheduledGames = Object.values(scheduledGames).filter(sg => 
             sg.players.includes(u.username) && sg.status !== 'completed'
         );
+        const isInGame = userScheduledGames.length > 0;
         
         let statusText = '';
+        let gameDetails = '';
+        
         if (hasLeft) {
             statusText = '<span style="color:#999; font-size:12px;">• Left event</span>';
         } else if (isInGame) {
             statusText = '<span style="color:#28a745; font-size:12px;">• In scheduled game</span>';
+            // Show which game(s)
+            const gameNames = userScheduledGames.map(sg => sg.game.name).join(', ');
+            gameDetails = `<div class="item-sub" style="color:#28a745;">Playing: ${gameNames}</div>`;
         } else {
             statusText = '<span style="color:#667eea; font-size:12px;">• Looking for game</span>';
         }
@@ -4471,8 +4503,9 @@ async function renderEventAttendees() {
         div.className = 'list-item';
         div.innerHTML = `
             <div class="list-item-left">
-                <div class="item-title">${u.displayName}${isMe ? ' <span style="color:#667eea; font-size:11px; font-weight:600;">YOU</span>' : ''} ${statusText}</div>
+                <div class="item-title">${u.displayName} (${u.username})${isMe ? ' <span style="color:#667eea; font-size:11px; font-weight:600;">YOU</span>' : ''} ${statusText}</div>
                 <div class="item-sub">Bringing ${bringingCount} of ${totalGames} games</div>
+                ${gameDetails}
             </div>
             ${isMe && !hasLeft ? `<button class="secondary" style="padding:5px 10px; font-size:13px; margin:0;" onclick="markLeftEvent()">Mark as Left</button>` : ''}
         `;
