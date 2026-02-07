@@ -2458,9 +2458,15 @@ async function goToVoteFilters() {
     
     // Reload the vote to get latest saved state
     const savedVote = activeGroup.votes[currentVote.id];
+    console.log('goToVoteFilters - currentVote.id:', currentVote.id);
+    console.log('goToVoteFilters - savedVote:', savedVote);
+    console.log('goToVoteFilters - savedVote.filters:', savedVote?.filters);
+    
     if (savedVote) {
         currentVote = savedVote;
     }
+    
+    console.log('goToVoteFilters - currentVote.filters after reload:', currentVote.filters);
     
     // Rebuild _allGames if not present (needed for filter application)
     if (!currentVote._allGames && currentVote.includeGamesFrom) {
@@ -2486,6 +2492,9 @@ async function goToVoteFilters() {
     
     updateVotePageIcons();
     goToPage('page-vote-filters');
+    
+    // Wait a moment for DOM to be ready
+    await new Promise(resolve => setTimeout(resolve, 50));
     
     // Clear any warnings
     document.getElementById('player-count-warning').style.display = 'none';
