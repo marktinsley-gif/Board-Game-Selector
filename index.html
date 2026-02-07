@@ -3245,6 +3245,11 @@ class DualRange {
     }
     getMin() { return this.vals.min; }
     getMax() { return this.vals.max; }
+    setValues(min, max) {
+        this.vals.min = Math.max(this.min, Math.min(min, this.max));
+        this.vals.max = Math.min(this.max, Math.max(max, this.min));
+        this.render();
+    }
 }
 
 // ════════════════════════════════════════════════════════════════════
