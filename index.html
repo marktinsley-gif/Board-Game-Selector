@@ -669,6 +669,12 @@ button.ghost:hover { background:#667eea; color:white; }
     </div>
     
     <div class="section">
+      <h3>Scheduled Games</h3>
+      <p style="font-size:14px; color:#555; margin-bottom:12px; line-height:1.5;">Games that have been confirmed and scheduled with specific players.</p>
+      <div id="scheduled-games-list"></div>
+    </div>
+    
+    <div class="section">
       <h3>Votes</h3>
       <p style="font-size:14px; color:#555; margin-bottom:12px; line-height:1.5;">Create votes using only the games attendees are bringing to this event.</p>
       <div id="event-votes"></div>
@@ -791,6 +797,7 @@ button.ghost:hover { background:#667eea; color:white; }
     <div style="display:flex; gap:8px; margin-bottom:16px;">
       <button onclick="selectAllMyEventGames()">Select All</button>
       <button class="secondary" onclick="deselectAllMyEventGames()">Deselect All</button>
+      <button onclick="saveMyEventGames()">Save Selection</button>
     </div>
     
     <div id="manage-event-games-list"></div>
@@ -996,6 +1003,43 @@ button.ghost:hover { background:#667eea; color:white; }
     <button class="secondary" onclick="goToPage('page-vote-voting')">Back to Voting</button>
     <button onclick="goBackToGroup()">Back to Group</button>
     <button class="danger" onclick="confirmDeleteVote()">Delete Vote</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     PAGE: SCHEDULE GAME CONFIRMATION (Event Votes Only)
+     ════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-schedule-game">
+  <div class="card">
+    <div class="topbar">
+      <span id="schedule-game-icon" class="logo" onclick="goHome()">🎲</span>
+      <button class="secondary" onclick="doLogout()">Log Out</button>
+    </div>
+    
+    <h2>Schedule This Game?</h2>
+    <div id="schedule-game-details"></div>
+    
+    <h3 style="margin-top:20px;">Confirm Players</h3>
+    <p style="font-size:14px; color:#555; margin-bottom:12px;">Select which participants will play this game.</p>
+    <div class="participant-grid" id="schedule-game-players"></div>
+    
+    <div id="additional-players-section" style="display:none; margin-top:20px; padding:16px; background:#f8f9fa; border-radius:8px;">
+      <h3>Open to Additional Players?</h3>
+      <p style="font-size:14px; color:#555; margin-bottom:12px;">You have selected fewer players than the maximum. Can others join?</p>
+      
+      <div class="checkbox-row">
+        <input type="checkbox" id="open-to-others" onchange="toggleAdditionalPlayersInput()">
+        <label for="open-to-others">Allow additional players to join</label>
+      </div>
+      
+      <div id="additional-players-input" style="display:none; margin-top:12px;">
+        <label for="max-additional-players">How many additional players can join?</label>
+        <input type="number" id="max-additional-players" min="1" value="1" style="max-width:120px;">
+      </div>
+    </div>
+    
+    <button class="success" onclick="confirmScheduleGame()" style="margin-top:20px;">Schedule Game</button>
+    <button class="secondary" onclick="goBackToEventVoteResult()">Cancel</button>
   </div>
 </div>
 
@@ -3693,6 +3737,7 @@ async function openEvent(eventId) {
     document.getElementById('event-details-subtitle').textContent = formatEventDate(event.date);
     
     await renderEventAttendees();
+    renderScheduledGames();
     renderEventVotes();
     
     goToPage('page-event-details');
@@ -4285,7 +4330,6 @@ async function manageMyEventGames() {
         const div = document.createElement('div');
         div.className = 'game-item';
         div.style.cursor = 'pointer';
-        div.onclick = () => toggleEventGame(game.id);
         
         const imgHtml = `<div class="game-image-placeholder">${getGameInitials(game.name)}</div>`;
         const bggUrl = `https://boardgamegeek.com/boardgame/${game.id}`;
@@ -4297,9 +4341,23 @@ async function manageMyEventGames() {
                 <div class="game-details">${game.minPlayers}–${game.maxPlayers} players • ${game.playingTime} min</div>
             </div>
             <div class="game-actions">
-                <input type="checkbox" id="bring-${game.id}" ${isBringing ? 'checked' : ''} style="width:24px; height:24px; cursor:pointer;" onclick="event.stopPropagation(); toggleEventGame('${game.id}')">
+                <input type="checkbox" id="bring-${game.id}" ${isBringing ? 'checked' : ''} style="width:24px; height:24px; cursor:pointer;">
             </div>
         `;
+        
+        // Add click handlers
+        const checkbox = div.querySelector('#bring-' + game.id);
+        checkbox.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleEventGameByCheckbox(game.id, checkbox.checked);
+        });
+        
+        div.addEventListener('click', (e) => {
+            if (e.target.closest('a')) return; // Don't toggle if clicking link
+            checkbox.checked = !checkbox.checked;
+            toggleEventGameByCheckbox(game.id, checkbox.checked);
+        });
+        
         container.appendChild(div);
     });
     
@@ -4307,19 +4365,14 @@ async function manageMyEventGames() {
     goToPage('page-manage-event-games');
 }
 
-function toggleEventGame(gameId) {
-    const cb = document.getElementById('bring-' + gameId);
-    if (!cb) return;
-    
-    cb.checked = !cb.checked;
-    
+function toggleEventGameByCheckbox(gameId, isChecked) {
     if (!currentEvent.attendeeGames[session.username]) {
         currentEvent.attendeeGames[session.username] = [];
     }
     
     const bringing = currentEvent.attendeeGames[session.username];
     
-    if (cb.checked) {
+    if (isChecked) {
         if (!bringing.includes(gameId)) {
             bringing.push(gameId);
         }
@@ -4329,6 +4382,14 @@ function toggleEventGame(gameId) {
             bringing.splice(idx, 1);
         }
     }
+}
+
+function toggleEventGame(gameId) {
+    const cb = document.getElementById('bring-' + gameId);
+    if (!cb) return;
+    
+    cb.checked = !cb.checked;
+    toggleEventGameByCheckbox(gameId, cb.checked);
 }
 
 async function selectAllMyEventGames() {
@@ -4361,6 +4422,447 @@ async function saveMyEventGames() {
     
     alert('Game selection saved!');
     goBackToEventCollection();
+}
+
+// ════════════════════════════════════════════════════════════════════
+// SCHEDULED GAMES MANAGEMENT
+// ════════════════════════════════════════════════════════════════════
+
+function generateScheduledGameId() {
+    return 'sg_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+}
+
+async function renderEventAttendees() {
+    const container = document.getElementById('event-attendees-list');
+    container.innerHTML = '<p style="color:#666; font-size:13px; padding:8px 0;">Loading…</p>';
+    
+    const members = await Promise.all(currentEvent.attendees.map(u => fsGetUser(u)));
+    container.innerHTML = '';
+    
+    // Get attendee statuses
+    const attendeeStatuses = currentEvent.attendeeStatuses || {};
+    
+    members.forEach(u => {
+        if (!u) return;
+        const isMe = u.username === session.username;
+        const bringingCount = (currentEvent.attendeeGames[u.username] || []).length;
+        const totalGames = (u.games || []).length;
+        
+        // Determine status
+        const status = attendeeStatuses[u.username] || 'active';
+        const hasLeft = status === 'left';
+        
+        // Check if user is in a scheduled game
+        const scheduledGames = currentEvent.scheduledGames || {};
+        const isInGame = Object.values(scheduledGames).some(sg => 
+            sg.players.includes(u.username) && sg.status !== 'completed'
+        );
+        
+        let statusText = '';
+        if (hasLeft) {
+            statusText = '<span style="color:#999; font-size:12px;">• Left event</span>';
+        } else if (isInGame) {
+            statusText = '<span style="color:#28a745; font-size:12px;">• In scheduled game</span>';
+        } else {
+            statusText = '<span style="color:#667eea; font-size:12px;">• Looking for game</span>';
+        }
+        
+        const div = document.createElement('div');
+        div.className = 'list-item';
+        div.innerHTML = `
+            <div class="list-item-left">
+                <div class="item-title">${u.displayName}${isMe ? ' <span style="color:#667eea; font-size:11px; font-weight:600;">YOU</span>' : ''} ${statusText}</div>
+                <div class="item-sub">Bringing ${bringingCount} of ${totalGames} games</div>
+            </div>
+            ${isMe && !hasLeft ? `<button class="secondary" style="padding:5px 10px; font-size:13px; margin:0;" onclick="markLeftEvent()">Mark as Left</button>` : ''}
+        `;
+        container.appendChild(div);
+    });
+}
+
+async function markLeftEvent() {
+    if (!confirm('Mark yourself as having left this event? This will remove you from any scheduled games.')) {
+        return;
+    }
+    
+    showLoading(true);
+    
+    if (!currentEvent.attendeeStatuses) {
+        currentEvent.attendeeStatuses = {};
+    }
+    currentEvent.attendeeStatuses[session.username] = 'left';
+    
+    // Remove from all active scheduled games
+    if (currentEvent.scheduledGames) {
+        Object.values(currentEvent.scheduledGames).forEach(sg => {
+            if (sg.status !== 'completed') {
+                const idx = sg.players.indexOf(session.username);
+                if (idx > -1) {
+                    sg.players.splice(idx, 1);
+                }
+            }
+        });
+    }
+    
+    await fsSaveGroup(activeGroup);
+    showLoading(false);
+    
+    await renderEventAttendees();
+    renderScheduledGames();
+}
+
+function renderScheduledGames() {
+    const container = document.getElementById('scheduled-games-list');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    const scheduledGames = currentEvent.scheduledGames || {};
+    const activeGames = Object.values(scheduledGames).filter(sg => sg.status !== 'completed');
+    
+    if (activeGames.length === 0) {
+        container.innerHTML = '<p style="color:#666; font-size:13px; padding:8px 0;">No scheduled games yet.</p>';
+        return;
+    }
+    
+    activeGames.forEach(sg => {
+        const game = sg.game;
+        const players = sg.players;
+        const isPlayer = players.includes(session.username);
+        const isOpen = sg.openToOthers && sg.maxPlayers && players.length < sg.maxPlayers;
+        const spotsLeft = sg.maxPlayers ? sg.maxPlayers - players.length : 0;
+        
+        const div = document.createElement('div');
+        div.className = 'list-item';
+        div.style.flexDirection = 'column';
+        div.style.alignItems = 'flex-start';
+        
+        let statusBadge = '';
+        if (isOpen) {
+            statusBadge = `<span style="background:#28a745; color:white; padding:3px 8px; border-radius:12px; font-size:11px; font-weight:600; margin-left:8px;">OPEN - ${spotsLeft} spot${spotsLeft !== 1 ? 's' : ''}</span>`;
+        } else {
+            statusBadge = `<span style="background:#6c757d; color:white; padding:3px 8px; border-radius:12px; font-size:11px; font-weight:600; margin-left:8px;">CLOSED</span>`;
+        }
+        
+        div.innerHTML = `
+            <div style="width:100%; display:flex; justify-content:space-between; align-items:flex-start;">
+                <div>
+                    <div class="item-title">${game.name} ${statusBadge}</div>
+                    <div class="item-sub">${game.minPlayers}–${game.maxPlayers} players • ${game.playingTime} min</div>
+                    <div style="font-size:13px; color:#667eea; margin-top:4px;">Players: ${players.join(', ')}</div>
+                </div>
+            </div>
+            <div style="margin-top:10px; display:flex; gap:6px; flex-wrap:wrap;">
+                ${isOpen && !isPlayer ? `<button class="success" style="padding:5px 10px; font-size:13px; margin:0;" onclick="joinScheduledGame('${sg.id}')">Join Game</button>` : ''}
+                ${isPlayer ? `<button class="secondary" style="padding:5px 10px; font-size:13px; margin:0;" onclick="leaveScheduledGame('${sg.id}')">Leave Game</button>` : ''}
+                ${isPlayer && isOpen ? `<button style="padding:5px 10px; font-size:13px; margin:0;" onclick="closeScheduledGame('${sg.id}')">Close to Others</button>` : ''}
+                ${isPlayer ? `<button class="success" style="padding:5px 10px; font-size:13px; margin:0;" onclick="markGameComplete('${sg.id}')">Mark Complete</button>` : ''}
+                ${isPlayer ? `<button class="danger" style="padding:5px 10px; font-size:13px; margin:0;" onclick="deleteScheduledGame('${sg.id}')">Delete</button>` : ''}
+            </div>
+        `;
+        container.appendChild(div);
+    });
+}
+
+async function joinScheduledGame(gameId) {
+    showLoading(true);
+    
+    const sg = currentEvent.scheduledGames[gameId];
+    
+    // Check if already at max
+    if (sg.maxPlayers && sg.players.length >= sg.maxPlayers) {
+        showLoading(false);
+        alert('This game is now full.');
+        return;
+    }
+    
+    sg.players.push(session.username);
+    
+    // If now at max, close to others
+    if (sg.maxPlayers && sg.players.length >= sg.maxPlayers) {
+        sg.openToOthers = false;
+    }
+    
+    await fsSaveGroup(activeGroup);
+    showLoading(false);
+    
+    renderScheduledGames();
+    await renderEventAttendees();
+}
+
+async function leaveScheduledGame(gameId) {
+    if (!confirm('Leave this scheduled game?')) return;
+    
+    showLoading(true);
+    
+    const sg = currentEvent.scheduledGames[gameId];
+    const idx = sg.players.indexOf(session.username);
+    if (idx > -1) {
+        sg.players.splice(idx, 1);
+    }
+    
+    // If no players left, delete the game
+    if (sg.players.length === 0) {
+        delete currentEvent.scheduledGames[gameId];
+    }
+    
+    await fsSaveGroup(activeGroup);
+    showLoading(false);
+    
+    renderScheduledGames();
+    await renderEventAttendees();
+}
+
+async function closeScheduledGame(gameId) {
+    if (!confirm('Close this game to additional players?')) return;
+    
+    showLoading(true);
+    
+    const sg = currentEvent.scheduledGames[gameId];
+    sg.openToOthers = false;
+    
+    await fsSaveGroup(activeGroup);
+    showLoading(false);
+    
+    renderScheduledGames();
+}
+
+async function markGameComplete(gameId) {
+    if (!confirm('Mark this game as complete? All players will be marked as looking for a game again.')) return;
+    
+    showLoading(true);
+    
+    const sg = currentEvent.scheduledGames[gameId];
+    sg.status = 'completed';
+    
+    await fsSaveGroup(activeGroup);
+    showLoading(false);
+    
+    renderScheduledGames();
+    await renderEventAttendees();
+}
+
+async function deleteScheduledGame(gameId) {
+    if (!confirm('Delete this scheduled game? This cannot be undone.')) return;
+    
+    showLoading(true);
+    
+    delete currentEvent.scheduledGames[gameId];
+    
+    await fsSaveGroup(activeGroup);
+    showLoading(false);
+    
+    renderScheduledGames();
+    await renderEventAttendees();
+}
+
+// ════════════════════════════════════════════════════════════════════
+// SCHEDULE GAME FROM VOTE RESULT
+// ════════════════════════════════════════════════════════════════════
+
+async function voteFinish() {
+    // For event votes, go to schedule game confirmation
+    if (currentVote && currentVote.eventId) {
+        const votes = currentVote.votes || {};
+        const scored = voteFilteredGames.map(game => {
+            const gv = votes[game.id] || {};
+            let score = 0;
+            Object.values(gv).forEach(v => { if (v==='promote') score++; if (v==='veto') score--; });
+            return { game, score };
+        });
+        scored.sort((a,b) => b.score - a.score);
+        const maxScore = scored[0].score;
+        const tied = scored.filter(s => s.score === maxScore);
+        const winner = tied[Math.floor(Math.random() * tied.length)].game;
+        
+        currentVote.winner = winner;
+        currentVote.status = 'completed';
+        showLoading(true);
+        await saveVote();
+        showLoading(false);
+        
+        // Go to schedule game page
+        await showScheduleGamePage(winner, tied.length);
+    } else {
+        // Regular vote - existing behavior
+        if (!confirm('This will mark the vote as complete for all participants. Are you sure you want to see the suggested game?')) {
+            return;
+        }
+        
+        const votes = currentVote.votes || {};
+        const scored = voteFilteredGames.map(game => {
+            const gv = votes[game.id] || {};
+            let score = 0;
+            Object.values(gv).forEach(v => { if (v==='promote') score++; if (v==='veto') score--; });
+            return { game, score };
+        });
+        scored.sort((a,b) => b.score - a.score);
+        const maxScore = scored[0].score;
+        const tied = scored.filter(s => s.score === maxScore);
+        const winner = tied[Math.floor(Math.random() * tied.length)].game;
+        
+        currentVote.winner = winner;
+        currentVote.status = 'completed';
+        showLoading(true);
+        await saveVote();
+        showLoading(false);
+        
+        renderResultPage(winner, currentVote, tied.length);
+        goToPage('page-vote-result');
+    }
+}
+
+async function showScheduleGamePage(game, tiedCount) {
+    // Set icon
+    const iconEl = document.getElementById('schedule-game-icon');
+    if (activeGroup.groupPhoto) {
+        iconEl.innerHTML = `<img src="${activeGroup.groupPhoto}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;" alt="Group">`;
+        iconEl.className = '';
+    } else {
+        iconEl.textContent = '🎲';
+        iconEl.className = 'logo';
+    }
+    
+    // Show game details
+    const detailsContainer = document.getElementById('schedule-game-details');
+    detailsContainer.innerHTML = `
+        <div style="background:#f8f9fa; border-radius:8px; padding:16px; margin-bottom:16px;">
+            <h3 style="margin:0 0 8px 0; color:#333;">${game.name}</h3>
+            <p style="font-size:14px; color:#666; margin:0;">${game.minPlayers}–${game.maxPlayers} players • ${game.playingTime} min • Rating ${game.average.toFixed(1)}</p>
+            ${tiedCount > 1 ? `<p style="font-size:13px; color:#999; margin-top:8px;">Randomly chosen from ${tiedCount} tied games</p>` : ''}
+        </div>
+    `;
+    
+    // Render player selection
+    const playersContainer = document.getElementById('schedule-game-players');
+    playersContainer.innerHTML = '';
+    
+    currentVote.participants.forEach(username => {
+        const div = document.createElement('div');
+        div.className = 'participant-card selected';
+        div.id = 'sgp-' + username;
+        div.innerHTML = `
+            <div class="pc-row">
+                <input type="checkbox" id="sgp-check-${username}" checked>
+                <label for="sgp-check-${username}" style="font-weight:600; color:#333;">${username}</label>
+            </div>
+        `;
+        
+        const cb = div.querySelector('#sgp-check-' + username);
+        cb.addEventListener('change', () => {
+            div.classList.toggle('selected', cb.checked);
+            checkAdditionalPlayersNeeded(game);
+        });
+        div.addEventListener('click', (e) => {
+            if (e.target.closest('label') || e.target.type === 'checkbox') return;
+            cb.checked = !cb.checked;
+            div.classList.toggle('selected', cb.checked);
+            checkAdditionalPlayersNeeded(game);
+        });
+        
+        playersContainer.appendChild(div);
+    });
+    
+    // Check if additional players section needed
+    checkAdditionalPlayersNeeded(game);
+    
+    goToPage('page-schedule-game');
+}
+
+function checkAdditionalPlayersNeeded(game) {
+    const selectedPlayers = [];
+    currentVote.participants.forEach(username => {
+        const cb = document.getElementById('sgp-check-' + username);
+        if (cb && cb.checked) selectedPlayers.push(username);
+    });
+    
+    const section = document.getElementById('additional-players-section');
+    
+    if (selectedPlayers.length < game.maxPlayers) {
+        section.style.display = 'block';
+        
+        // Update max additional players input
+        const maxAdditional = game.maxPlayers - selectedPlayers.length;
+        const input = document.getElementById('max-additional-players');
+        input.max = maxAdditional;
+        input.value = Math.min(parseInt(input.value) || 1, maxAdditional);
+    } else {
+        section.style.display = 'none';
+        document.getElementById('open-to-others').checked = false;
+        document.getElementById('additional-players-input').style.display = 'none';
+    }
+}
+
+function toggleAdditionalPlayersInput() {
+    const checkbox = document.getElementById('open-to-others');
+    const input = document.getElementById('additional-players-input');
+    input.style.display = checkbox.checked ? 'block' : 'none';
+}
+
+async function confirmScheduleGame() {
+    // Get selected players
+    const selectedPlayers = [];
+    currentVote.participants.forEach(username => {
+        const cb = document.getElementById('sgp-check-' + username);
+        if (cb && cb.checked) selectedPlayers.push(username);
+    });
+    
+    if (selectedPlayers.length === 0) {
+        alert('Please select at least one player');
+        return;
+    }
+    
+    const game = currentVote.winner;
+    
+    // Check if open to others
+    const openToOthers = document.getElementById('open-to-others').checked;
+    let maxPlayers = selectedPlayers.length;
+    
+    if (openToOthers) {
+        const additionalPlayers = parseInt(document.getElementById('max-additional-players').value) || 0;
+        maxPlayers = selectedPlayers.length + additionalPlayers;
+    }
+    
+    showLoading(true);
+    
+    // Create scheduled game
+    if (!currentEvent.scheduledGames) {
+        currentEvent.scheduledGames = {};
+    }
+    
+    const scheduledGameId = generateScheduledGameId();
+    currentEvent.scheduledGames[scheduledGameId] = {
+        id: scheduledGameId,
+        game: game,
+        players: selectedPlayers,
+        openToOthers: openToOthers,
+        maxPlayers: maxPlayers,
+        createdBy: session.username,
+        createdAt: new Date().toISOString(),
+        status: 'active'
+    };
+    
+    await fsSaveGroup(activeGroup);
+    showLoading(false);
+    
+    alert('Game scheduled!');
+    openEvent(currentEvent.id);
+}
+
+function goBackToEventVoteResult() {
+    const game = currentVote.winner;
+    const votes = currentVote.votes || {};
+    const scored = voteFilteredGames.map(g => {
+        const gv = votes[g.id] || {};
+        let score = 0;
+        Object.values(gv).forEach(v => { if (v==='promote') score++; if (v==='veto') score--; });
+        return { game: g, score };
+    });
+    const maxScore = Math.max(...scored.map(s => s.score));
+    const tiedCount = scored.filter(s => s.score === maxScore).length;
+    
+    renderResultPage(game, currentVote, tiedCount);
+    goToPage('page-vote-result');
 }
 
 // ════════════════════════════════════════════════════════════════════
