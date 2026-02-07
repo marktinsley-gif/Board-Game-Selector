@@ -42,11 +42,11 @@ h3 { color:#444; margin-bottom:12px; font-size:18px; }
 .topbar button { margin:0; padding:8px 16px; font-size:14px; }
 
 label { display:block; margin-bottom:6px; color:#333; font-weight:500; font-size:14px; }
-input[type="text"], input[type="password"], input[type="number"], input[type="file"] {
+input[type="text"], input[type="password"], input[type="number"], input[type="file"], input[type="date"] {
     width:100%; padding:10px 12px; border:2px solid #e0e0e0; border-radius:8px;
     font-size:15px; margin-bottom:16px; transition:border-color 0.2s;
 }
-input[type="text"]:focus, input[type="password"]:focus, input[type="number"]:focus {
+input[type="text"]:focus, input[type="password"]:focus, input[type="number"]:focus, input[type="date"]:focus {
     outline:none; border-color:#667eea;
 }
 input[type="file"] { padding:8px; }
@@ -442,6 +442,14 @@ button.ghost:hover { background:#667eea; color:white; }
     </div>
 
     <div class="section">
+      <h3>Events</h3>
+      <p style="font-size:14px; color:#555; margin-bottom:12px; line-height:1.5;">Organize multi-table gaming events. Attendees can specify which games they're bringing, manage their collection preferences, and run votes for individual tables.</p>
+      <div id="group-events"></div>
+      <button class="success" onclick="startNewEvent()" style="margin-top:10px;">+ Create a New Event</button>
+      <button onclick="viewPastEvents()" style="margin-top:10px;">View Past Events</button>
+    </div>
+
+    <div class="section">
       <button onclick="goHome()">🏠 Back to Home</button>
       <button id="admin-details-btn" onclick="viewGroupDetails()" style="display:none;">Admin Details</button>
       <button class="secondary" onclick="doLeaveGroup()">Leave This Group</button>
@@ -515,7 +523,10 @@ button.ghost:hover { background:#667eea; color:white; }
   <div class="card">
     <div class="topbar">
       <span id="gc-icon-header" class="logo" onclick="goHome()">🎲</span>
-      <button class="secondary" onclick="doLogout()">Log Out</button>
+      <div style="display:flex; gap:8px;">
+        <button class="secondary" onclick="goBackToGroup()">Back to Group</button>
+        <button class="secondary" onclick="doLogout()">Log Out</button>
+      </div>
     </div>
     <h2>Group Collection</h2>
     <p class="subtitle">Promote games you'd like to play with this group.</p>
@@ -591,6 +602,216 @@ button.ghost:hover { background:#667eea; color:white; }
     
     <p style="font-size:13px; color:#666; margin-bottom:12px;" id="group-collection-count-label"></p>
     <div id="group-collection-list"></div>
+    <button class="secondary" onclick="goBackToGroup()">Back to Group</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     PAGE: CREATE EVENT
+     ════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-create-event">
+  <div class="card">
+    <div class="topbar">
+      <span id="create-event-icon" class="logo" onclick="goHome()">🎲</span>
+      <button class="secondary" onclick="doLogout()">Log Out</button>
+    </div>
+    <h2>Create New Event</h2>
+    <div class="alert error" id="create-event-error"></div>
+    
+    <label for="event-date">Event Date *</label>
+    <input type="date" id="event-date" required>
+    
+    <label for="event-name">Event Name (optional - will use date if blank)</label>
+    <input type="text" id="event-name" placeholder="e.g. Summer Board Game Night">
+    
+    <div class="checkbox-row" style="margin-top:12px; margin-bottom:16px;">
+      <input type="checkbox" id="event-is-public" checked>
+      <label for="event-is-public">Public event (visible to all group members)</label>
+    </div>
+    <p style="font-size:13px; color:#666; margin-bottom:16px;">Private events are only visible to attendees.</p>
+    
+    <h3>Select Attendees</h3>
+    <div class="participant-grid" id="event-attendee-cards"></div>
+    
+    <button onclick="createEventSubmit()">Create Event</button>
+    <button class="secondary" onclick="goBackToGroup()">Cancel</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     PAGE: EVENT DETAILS
+     ════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-event-details">
+  <div class="card">
+    <div class="topbar">
+      <span id="event-details-icon" class="logo" onclick="goHome()">🎲</span>
+      <button class="secondary" onclick="doLogout()">Log Out</button>
+    </div>
+    
+    <h2 id="event-details-title"></h2>
+    <p class="subtitle" id="event-details-subtitle"></p>
+    
+    <h3>Event Attendees</h3>
+    <div id="event-attendees-list"></div>
+    <button onclick="showAddEventAttendees()" style="margin-top:10px;">Add Attendees</button>
+    
+    <div id="add-event-attendees-panel" style="display:none; margin-top:16px; padding-top:16px; border-top:2px solid #e0e0e0;">
+      <h4>Add Attendees from Group</h4>
+      <div class="participant-grid" id="add-event-attendee-cards"></div>
+      <button onclick="addEventAttendeesSubmit()">Add Selected</button>
+      <button class="secondary" onclick="hideAddEventAttendees()">Cancel</button>
+    </div>
+    
+    <div class="section">
+      <h3>Event Collection</h3>
+      <p style="font-size:14px; color:#555; margin-bottom:12px; line-height:1.5;">Manage which games attendees are bringing and vote on games to play. Each attendee can select which games from their collection they're bringing to the event.</p>
+      <button onclick="viewEventCollection()">View Event Collection</button>
+    </div>
+    
+    <div class="section">
+      <h3>Votes</h3>
+      <p style="font-size:14px; color:#555; margin-bottom:12px; line-height:1.5;">Create votes using only the games attendees are bringing to this event.</p>
+      <div id="event-votes"></div>
+      <button class="success" onclick="startNewEventVote()" style="margin-top:10px;">+ Start a New Vote</button>
+    </div>
+    
+    <div class="section">
+      <button onclick="goBackToGroup()">Back to Group</button>
+      <button class="danger" onclick="confirmDeleteEvent()">Delete Event</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     PAGE: EVENT COLLECTION
+     ════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-event-collection">
+  <div class="card">
+    <div class="topbar">
+      <span id="event-collection-icon" class="logo" onclick="goHome()">🎲</span>
+      <div style="display:flex; gap:8px;">
+        <button class="secondary" onclick="goBackToEvent()">Back to Event</button>
+        <button class="secondary" onclick="doLogout()">Log Out</button>
+      </div>
+    </div>
+    
+    <h2>Event Collection</h2>
+    <p class="subtitle">Promote games and select which games you're bringing.</p>
+    
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+      <div class="checkbox-row" style="margin:0;">
+        <input type="checkbox" id="ec-no-expansions" checked onchange="renderEventCollection()">
+        <label for="ec-no-expansions">Exclude expansions</label>
+      </div>
+      
+      <div style="display:flex; align-items:center; gap:8px;">
+        <label for="ec-sort-select" style="margin:0; font-size:14px;">Sort by:</label>
+        <select id="ec-sort-select" onchange="renderEventCollection()" style="padding:6px 10px; border:2px solid #e0e0e0; border-radius:6px; font-size:14px;">
+          <option value="promotions">Promotions</option>
+          <option value="alphabetical">Alphabetical</option>
+        </select>
+      </div>
+    </div>
+    
+    <button class="secondary" onclick="toggleECFilters()" id="ec-filter-toggle" style="margin-bottom:12px;">Show Filters</button>
+    
+    <div id="ec-filters-panel" style="display:none; border:2px solid #e0e0e0; border-radius:8px; padding:16px; margin-bottom:16px; background:#f8f9fa;">
+      <h3 style="margin-bottom:12px; font-size:16px;">Filter Collection</h3>
+      
+      <label>Include games from:</label>
+      <div id="ec-owner-checkboxes" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px;"></div>
+      
+      <div class="slider-container" style="margin-bottom:12px;">
+        <div class="slider-label"><label style="margin:0;">Player Count Range</label><span id="ec-player-range-label">1 – 20</span></div>
+        <div class="dual-range" id="ec-dr-players">
+          <div class="dual-range-track"><div class="dual-range-selected"></div></div>
+          <div class="dual-range-thumb dual-range-thumb-min"></div>
+          <div class="dual-range-thumb dual-range-thumb-max"></div>
+        </div>
+      </div>
+      
+      <div class="checkbox-row" style="margin-top:0px; margin-bottom:8px;">
+        <input type="checkbox" id="ec-filter-all-player-counts">
+        <label for="ec-filter-all-player-counts" style="font-size:13px;">Must work at ALL player counts in range</label>
+      </div>
+      
+      <div class="checkbox-row" style="margin-top:10px; margin-bottom:8px;">
+        <input type="checkbox" id="ec-filter-rec-players">
+        <label for="ec-filter-rec-players">Only include games marked as "recommended" at this player count</label>
+      </div>
+      
+      <div class="checkbox-row" style="margin-top:0px; margin-bottom:20px;">
+        <input type="checkbox" id="ec-filter-best-players">
+        <label for="ec-filter-best-players">Only include games marked as "best" at this player count</label>
+      </div>
+      
+      <div class="slider-container">
+        <div class="slider-label"><label style="margin:0;">Complexity</label><span id="ec-complexity-label">1.0 – 5.0</span></div>
+        <div class="dual-range" id="ec-dr-complexity">
+          <div class="dual-range-track"><div class="dual-range-selected"></div></div>
+          <div class="dual-range-thumb dual-range-thumb-min"></div>
+          <div class="dual-range-thumb dual-range-thumb-max"></div>
+        </div>
+      </div>
+      
+      <div class="slider-container">
+        <div class="slider-label"><label style="margin:0;">BGG Rating</label><span id="ec-rating-label">1.0 – 10.0</span></div>
+        <div class="dual-range" id="ec-dr-rating">
+          <div class="dual-range-track"><div class="dual-range-selected"></div></div>
+          <div class="dual-range-thumb dual-range-thumb-min"></div>
+          <div class="dual-range-thumb dual-range-thumb-max"></div>
+        </div>
+      </div>
+      
+      <button onclick="renderEventCollection()" style="margin-top:12px;">Apply Filters</button>
+    </div>
+    
+    <p style="font-size:13px; color:#666; margin-bottom:12px;" id="event-collection-count-label"></p>
+    <div id="event-collection-list"></div>
+    <button class="secondary" onclick="goBackToEvent()">Back to Event</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     PAGE: MANAGE MY EVENT GAMES
+     ════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-manage-event-games">
+  <div class="card">
+    <div class="topbar">
+      <span id="manage-event-games-icon" class="logo" onclick="goHome()">🎲</span>
+      <div style="display:flex; gap:8px;">
+        <button class="secondary" onclick="goBackToEventCollection()">Back</button>
+        <button class="secondary" onclick="doLogout()">Log Out</button>
+      </div>
+    </div>
+    
+    <h2>Select Games I'm Bringing</h2>
+    <p class="subtitle">Choose which games from your collection you're bringing to this event.</p>
+    
+    <div style="display:flex; gap:8px; margin-bottom:16px;">
+      <button onclick="selectAllMyEventGames()">Select All</button>
+      <button class="secondary" onclick="deselectAllMyEventGames()">Deselect All</button>
+    </div>
+    
+    <div id="manage-event-games-list"></div>
+    
+    <button onclick="saveMyEventGames()">Save Selection</button>
+    <button class="secondary" onclick="goBackToEventCollection()">Cancel</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     PAGE: PAST EVENTS
+     ════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-past-events">
+  <div class="card">
+    <div class="topbar">
+      <span id="past-events-icon" class="logo" onclick="goHome()">🎲</span>
+      <button class="secondary" onclick="doLogout()">Log Out</button>
+    </div>
+    
+    <h2>Past Events</h2>
+    <div id="past-events-list"></div>
     <button class="secondary" onclick="goBackToGroup()">Back to Group</button>
   </div>
 </div>
@@ -1246,6 +1467,12 @@ async function goToGroup(code) {
 
     activeGroupCode = code;
     activeGroup = g;
+    
+    // Initialize events if not present
+    if (!activeGroup.events) {
+        activeGroup.events = {};
+        await fsSaveGroup(activeGroup);
+    }
 
     document.getElementById('group-header-name').textContent = g.name;
     document.getElementById('group-code-display').textContent = g.code;
@@ -1270,6 +1497,7 @@ async function goToGroup(code) {
     
     goToPage('page-group');
     renderGroupVotes();
+    renderGroupEvents();
 }
 
 function goBackToGroup() {
@@ -2680,6 +2908,9 @@ async function vpContinue() {
     const importPromotions = document.getElementById('import-group-promotions').checked;
     currentVote.importPromotions = importPromotions;
     
+    // Check if this is an event vote
+    const isEventVote = currentVote && currentVote.eventId;
+    
     const participants = [];
     const includeGamesFrom = []; // Track whose games are included
     const gameMap = new Map();
@@ -2698,7 +2929,10 @@ async function vpContinue() {
         const gcb = document.getElementById('pc-games-' + username);
         if (gcb && gcb.checked) {
             includeGamesFrom.push(username);
-            const games = u.games || [];
+            // For event votes, use only games being brought to event
+            const games = isEventVote 
+                ? (u.games || []).filter(g => (currentEvent.attendeeGames[username] || []).includes(g.id))
+                : (u.games || []);
             games.forEach(game => {
                 if (!gameMap.has(game.id)) {
                     gameMap.set(game.id, { ...game, owners: [username] });
@@ -2757,16 +2991,26 @@ async function vpContinue() {
     // Initialize sliders (will handle setting player count and all filter values)
     initSliders();
     
+    // Clear any existing warnings first
+    const warningEl = document.getElementById('player-count-warning');
+    const rangeWarningEl = document.getElementById('player-range-warning');
+    if (warningEl) {
+        warningEl.textContent = '';
+        warningEl.style.display = 'none';
+    }
+    if (rangeWarningEl) {
+        rangeWarningEl.textContent = '';
+        rangeWarningEl.style.display = 'none';
+    }
+    
     // Show warning if participant count changed
     if (playerCountWarning) {
         if (showRangeWarning) {
             // Show warning below range slider
-            const rangeWarningEl = document.getElementById('player-range-warning');
             rangeWarningEl.textContent = playerCountWarning;
             rangeWarningEl.style.display = 'block';
         } else {
             // Show warning next to player count input
-            const warningEl = document.getElementById('player-count-warning');
             warningEl.textContent = playerCountWarning;
             warningEl.style.display = 'inline';
         }
@@ -3005,9 +3249,17 @@ async function saveVote() {
     delete toSave._allGames;
     
     console.log('saveVote - toSave.filters:', JSON.stringify(toSave.filters));
-    console.log('saveVote - Saving to activeGroup.votes[' + currentVote.id + ']');
     
-    activeGroup.votes[currentVote.id] = toSave;
+    // Check if this is an event vote
+    if (currentVote.eventId) {
+        console.log('saveVote - Saving to event votes[' + currentVote.id + ']');
+        currentEvent = activeGroup.events[currentVote.eventId];
+        currentEvent.votes[currentVote.id] = toSave;
+    } else {
+        console.log('saveVote - Saving to group votes[' + currentVote.id + ']');
+        activeGroup.votes[currentVote.id] = toSave;
+    }
+    
     await fsSaveGroup(activeGroup);
     
     console.log('saveVote - COMPLETE - Vote saved to database');
@@ -3189,6 +3441,982 @@ function renderResultPage(game, vote, tiedCount) {
         </div>
         ${tiedCount > 1 ? `<p style="color:#666; font-size:13px; margin-top:10px;">Randomly chosen from ${tiedCount} tied games</p>` : ''}
     `;
+}
+
+// ════════════════════════════════════════════════════════════════════
+// EVENT MANAGEMENT - Global Variables
+// ════════════════════════════════════════════════════════════════════
+let currentEvent = null;
+let ecSliders = {}; // Event Collection sliders
+
+// ════════════════════════════════════════════════════════════════════
+// EVENT MANAGEMENT - Utility Functions
+// ════════════════════════════════════════════════════════════════════
+
+function generateEventId() {
+    return 'e_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+}
+
+function formatEventDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+    });
+}
+
+function isEventPast(dateString) {
+    const eventDate = new Date(dateString);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return eventDate < today;
+}
+
+// ════════════════════════════════════════════════════════════════════
+// EVENT MANAGEMENT - Group Page Integration
+// ════════════════════════════════════════════════════════════════════
+
+function renderGroupEvents() {
+    const container = document.getElementById('group-events');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    const allEvents = Object.values(activeGroup.events || {});
+    
+    const upcomingEvents = allEvents.filter(e => {
+        if (isEventPast(e.date)) return false;
+        if (e.isPublic) return true;
+        return e.attendees.includes(session.username);
+    });
+    
+    if (upcomingEvents.length === 0) {
+        container.innerHTML = '<p style="color:#666; font-size:13px; padding:8px 0;">No upcoming events.</p>';
+        return;
+    }
+    
+    upcomingEvents.sort((a, b) => new Date(a.date) - new Date(b.date));
+    
+    upcomingEvents.forEach(event => {
+        const div = document.createElement('div');
+        div.className = 'vote-card';
+        div.onclick = () => openEvent(event.id);
+        
+        const isAttending = event.attendees.includes(session.username);
+        const eventName = event.name || formatEventDate(event.date);
+        
+        div.innerHTML = `
+            <div>
+                <div class="vc-title">${eventName}</div>
+                <div class="vc-sub">${formatEventDate(event.date)} • ${event.attendees.length} attendee${event.attendees.length !== 1 ? 's' : ''}</div>
+            </div>
+            <div class="vc-badge ${isAttending ? '' : 'completed'}">${isAttending ? 'Attending' : event.isPublic ? 'Public' : 'Private'}</div>
+        `;
+        container.appendChild(div);
+    });
+}
+
+// ════════════════════════════════════════════════════════════════════
+// EVENT MANAGEMENT - Create Event
+// ════════════════════════════════════════════════════════════════════
+
+async function startNewEvent() {
+    const iconEl = document.getElementById('create-event-icon');
+    if (activeGroup.groupPhoto) {
+        iconEl.innerHTML = `<img src="${activeGroup.groupPhoto}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;" alt="Group">`;
+        iconEl.className = '';
+    } else {
+        iconEl.textContent = '🎲';
+        iconEl.className = 'logo';
+    }
+    
+    await renderEventAttendeeCards();
+    goToPage('page-create-event');
+}
+
+async function renderEventAttendeeCards() {
+    const container = document.getElementById('event-attendee-cards');
+    container.innerHTML = '';
+    
+    const members = await Promise.all(activeGroup.members.map(username => fsGetUser(username)));
+    
+    members.forEach(u => {
+        if (!u) return;
+        const username = u.username;
+        const games = u.games || [];
+        const hasGames = games.length > 0;
+        
+        const div = document.createElement('div');
+        div.className = 'participant-card';
+        div.id = 'ea-' + username;
+        div.innerHTML = `
+            <div class="pc-row">
+                <input type="checkbox" id="ea-check-${username}">
+                <label for="ea-check-${username}" style="font-weight:600; color:#333;">${u.displayName}</label>
+            </div>
+            <div class="pc-sub">${hasGames ? games.length + ' games' : 'No collection'}</div>
+        `;
+        
+        const mainCb = div.querySelector('#ea-check-' + username);
+        mainCb.addEventListener('change', () => {
+            div.classList.toggle('selected', mainCb.checked);
+        });
+        div.addEventListener('click', (e) => {
+            if (e.target.closest('label') || e.target.type === 'checkbox') return;
+            mainCb.checked = !mainCb.checked;
+            div.classList.toggle('selected', mainCb.checked);
+        });
+        
+        container.appendChild(div);
+    });
+}
+
+async function createEventSubmit() {
+    hideAlert('create-event-error');
+    
+    const date = document.getElementById('event-date').value;
+    const name = document.getElementById('event-name').value.trim();
+    const isPublic = document.getElementById('event-is-public').checked;
+    
+    if (!date) {
+        showAlert('create-event-error', 'Please select an event date');
+        return;
+    }
+    
+    const attendees = [];
+    activeGroup.members.forEach(username => {
+        const cb = document.getElementById('ea-check-' + username);
+        if (cb && cb.checked) attendees.push(username);
+    });
+    
+    if (attendees.length === 0) {
+        showAlert('create-event-error', 'Please select at least one attendee');
+        return;
+    }
+    
+    showLoading(true);
+    
+    const eventId = generateEventId();
+    const newEvent = {
+        id: eventId,
+        groupCode: activeGroupCode,
+        date: date,
+        name: name,
+        isPublic: isPublic,
+        attendees: attendees,
+        createdBy: session.username,
+        createdAt: new Date().toISOString(),
+        eventPromotions: {},
+        attendeeGames: {},
+        votes: {}
+    };
+    
+    for (const username of attendees) {
+        const user = await fsGetUser(username);
+        if (!user) continue;
+        
+        const userGameIds = (user.games || []).map(g => g.id);
+        newEvent.attendeeGames[username] = userGameIds;
+        
+        if (activeGroup.groupPromotions) {
+            Object.keys(activeGroup.groupPromotions).forEach(gameId => {
+                const userVote = activeGroup.groupPromotions[gameId][username];
+                if (userVote) {
+                    if (!newEvent.eventPromotions[gameId]) {
+                        newEvent.eventPromotions[gameId] = {};
+                    }
+                    newEvent.eventPromotions[gameId][username] = userVote;
+                }
+            });
+        }
+    }
+    
+    if (!activeGroup.events) activeGroup.events = {};
+    activeGroup.events[eventId] = newEvent;
+    await fsSaveGroup(activeGroup);
+    
+    showLoading(false);
+    
+    document.getElementById('event-date').value = '';
+    document.getElementById('event-name').value = '';
+    document.getElementById('event-is-public').checked = true;
+    
+    openEvent(eventId);
+}
+
+// ════════════════════════════════════════════════════════════════════
+// EVENT MANAGEMENT - Event Details Page
+// ════════════════════════════════════════════════════════════════════
+
+async function openEvent(eventId) {
+    showLoading(true);
+    activeGroup = await fsGetGroup(activeGroupCode);
+    showLoading(false);
+    
+    const event = activeGroup.events[eventId];
+    if (!event) {
+        goBackToGroup();
+        return;
+    }
+    
+    currentEvent = event;
+    
+    if (!event.attendees.includes(session.username)) {
+        if (event.isPublic) {
+            if (confirm('Would you like to join this event?')) {
+                await joinEvent(eventId);
+                return;
+            } else {
+                goBackToGroup();
+                return;
+            }
+        } else {
+            alert('This is a private event.');
+            goBackToGroup();
+            return;
+        }
+    }
+    
+    const iconEl = document.getElementById('event-details-icon');
+    if (activeGroup.groupPhoto) {
+        iconEl.innerHTML = `<img src="${activeGroup.groupPhoto}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;" alt="Group">`;
+        iconEl.className = '';
+    } else {
+        iconEl.textContent = '🎲';
+        iconEl.className = 'logo';
+    }
+    
+    const eventName = event.name || formatEventDate(event.date);
+    document.getElementById('event-details-title').textContent = eventName;
+    document.getElementById('event-details-subtitle').textContent = formatEventDate(event.date);
+    
+    await renderEventAttendees();
+    renderEventVotes();
+    
+    goToPage('page-event-details');
+}
+
+async function joinEvent(eventId) {
+    showLoading(true);
+    
+    const event = activeGroup.events[eventId];
+    event.attendees.push(session.username);
+    
+    const user = await fsGetUser(session.username);
+    if (user) {
+        const userGameIds = (user.games || []).map(g => g.id);
+        event.attendeeGames[session.username] = userGameIds;
+        
+        if (activeGroup.groupPromotions) {
+            Object.keys(activeGroup.groupPromotions).forEach(gameId => {
+                const userVote = activeGroup.groupPromotions[gameId][session.username];
+                if (userVote) {
+                    if (!event.eventPromotions[gameId]) {
+                        event.eventPromotions[gameId] = {};
+                    }
+                    event.eventPromotions[gameId][session.username] = userVote;
+                }
+            });
+        }
+    }
+    
+    await fsSaveGroup(activeGroup);
+    showLoading(false);
+    
+    openEvent(eventId);
+}
+
+async function renderEventAttendees() {
+    const container = document.getElementById('event-attendees-list');
+    container.innerHTML = '<p style="color:#666; font-size:13px; padding:8px 0;">Loading…</p>';
+    
+    const members = await Promise.all(currentEvent.attendees.map(u => fsGetUser(u)));
+    container.innerHTML = '';
+    
+    members.forEach(u => {
+        if (!u) return;
+        const isMe = u.username === session.username;
+        const bringingCount = (currentEvent.attendeeGames[u.username] || []).length;
+        const totalGames = (u.games || []).length;
+        
+        const div = document.createElement('div');
+        div.className = 'list-item';
+        div.innerHTML = `
+            <div class="list-item-left">
+                <div class="item-title">${u.displayName}${isMe ? ' <span style="color:#667eea; font-size:11px; font-weight:600;">YOU</span>' : ''}</div>
+                <div class="item-sub">Bringing ${bringingCount} of ${totalGames} games</div>
+            </div>
+        `;
+        container.appendChild(div);
+    });
+}
+
+function showAddEventAttendees() {
+    document.getElementById('add-event-attendees-panel').style.display = 'block';
+    renderAddEventAttendeeCards();
+}
+
+function hideAddEventAttendees() {
+    document.getElementById('add-event-attendees-panel').style.display = 'none';
+}
+
+async function renderAddEventAttendeeCards() {
+    const container = document.getElementById('add-event-attendee-cards');
+    container.innerHTML = '';
+    
+    const nonAttendees = activeGroup.members.filter(m => !currentEvent.attendees.includes(m));
+    
+    if (nonAttendees.length === 0) {
+        container.innerHTML = '<p style="color:#666; font-size:13px;">All group members are already attending.</p>';
+        return;
+    }
+    
+    const members = await Promise.all(nonAttendees.map(username => fsGetUser(username)));
+    
+    members.forEach(u => {
+        if (!u) return;
+        const username = u.username;
+        const games = u.games || [];
+        
+        const div = document.createElement('div');
+        div.className = 'participant-card';
+        div.id = 'aea-' + username;
+        div.innerHTML = `
+            <div class="pc-row">
+                <input type="checkbox" id="aea-check-${username}">
+                <label for="aea-check-${username}" style="font-weight:600; color:#333;">${u.displayName}</label>
+            </div>
+            <div class="pc-sub">${games.length} games</div>
+        `;
+        
+        const mainCb = div.querySelector('#aea-check-' + username);
+        mainCb.addEventListener('change', () => {
+            div.classList.toggle('selected', mainCb.checked);
+        });
+        div.addEventListener('click', (e) => {
+            if (e.target.closest('label') || e.target.type === 'checkbox') return;
+            mainCb.checked = !mainCb.checked;
+            div.classList.toggle('selected', mainCb.checked);
+        });
+        
+        container.appendChild(div);
+    });
+}
+
+async function addEventAttendeesSubmit() {
+    const newAttendees = [];
+    
+    activeGroup.members.forEach(username => {
+        const cb = document.getElementById('aea-check-' + username);
+        if (cb && cb.checked) newAttendees.push(username);
+    });
+    
+    if (newAttendees.length === 0) {
+        hideAddEventAttendees();
+        return;
+    }
+    
+    showLoading(true);
+    
+    for (const username of newAttendees) {
+        currentEvent.attendees.push(username);
+        
+        const user = await fsGetUser(username);
+        if (user) {
+            const userGameIds = (user.games || []).map(g => g.id);
+            currentEvent.attendeeGames[username] = userGameIds;
+            
+            if (activeGroup.groupPromotions) {
+                Object.keys(activeGroup.groupPromotions).forEach(gameId => {
+                    const userVote = activeGroup.groupPromotions[gameId][username];
+                    if (userVote) {
+                        if (!currentEvent.eventPromotions[gameId]) {
+                            currentEvent.eventPromotions[gameId] = {};
+                        }
+                        if (!currentEvent.eventPromotions[gameId][username]) {
+                            currentEvent.eventPromotions[gameId][username] = userVote;
+                        }
+                    }
+                });
+            }
+        }
+    }
+    
+    await fsSaveGroup(activeGroup);
+    showLoading(false);
+    
+    hideAddEventAttendees();
+    await renderEventAttendees();
+}
+
+function renderEventVotes() {
+    const container = document.getElementById('event-votes');
+    container.innerHTML = '';
+    
+    const eventVotes = Object.values(currentEvent.votes || {}).filter(v => v.participants.includes(session.username));
+    
+    if (eventVotes.length === 0) {
+        container.innerHTML = '<p style="color:#666; font-size:13px; padding:8px 0;">No votes yet.</p>';
+        return;
+    }
+    
+    eventVotes.sort((a, b) => {
+        if (a.status !== b.status) return a.status === 'active' ? -1 : 1;
+        return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+    
+    eventVotes.forEach(vote => {
+        const div = document.createElement('div');
+        div.className = 'vote-card';
+        div.onclick = () => openEventVote(vote.id);
+        
+        const gameCount = (vote.filteredGames || []).length;
+        const isActive = vote.status === 'active';
+        const summary = isActive
+            ? `${gameCount} games • ${vote.participants.length} participants`
+            : `Winner: ${vote.winner ? vote.winner.name : '—'}`;
+        
+        const voteTitle = vote.voteName ? vote.voteName : `Vote by ${vote.createdBy}`;
+        
+        div.innerHTML = `
+            <div>
+                <div class="vc-title">${voteTitle}</div>
+                <div class="vc-sub">${summary} • ${new Date(vote.createdAt).toLocaleDateString()}</div>
+            </div>
+            <div class="vc-badge ${isActive ? '' : 'completed'}">${isActive ? 'Active' : 'Completed'}</div>
+        `;
+        container.appendChild(div);
+    });
+}
+
+async function startNewEventVote() {
+    const user = await fsGetUser(session.username);
+    const myEventGames = currentEvent.attendeeGames[session.username] || [];
+    
+    if (myEventGames.length === 0) {
+        alert('You need to select games you\'re bringing to the event first. Go to Event Collection to select your games.');
+        return;
+    }
+    
+    currentVote = {
+        id: generateVoteId(),
+        eventId: currentEvent.id,
+        groupCode: activeGroupCode,
+        createdBy: session.username,
+        voteName: '',
+        participants: [],
+        filters: {},
+        filteredGames: [],
+        votes: {},
+        status: 'active',
+        winner: null,
+        createdAt: new Date().toISOString()
+    };
+    
+    updateVotePageIcons();
+    await renderEventVoteParticipants();
+    goToPage('page-vote-participants');
+}
+
+async function renderEventVoteParticipants() {
+    const container = document.getElementById('vp-cards');
+    container.innerHTML = '';
+    
+    const members = await Promise.all(currentEvent.attendees.map(username => fsGetUser(username)));
+    
+    members.forEach(u => {
+        if (!u) return;
+        const username = u.username;
+        const eventGameIds = currentEvent.attendeeGames[username] || [];
+        const hasGames = eventGameIds.length > 0;
+        
+        const div = document.createElement('div');
+        div.className = 'participant-card';
+        div.id = 'pc-' + username;
+        div.innerHTML = `
+            <div class="pc-row">
+                <input type="checkbox" id="pc-check-${username}">
+                <label for="pc-check-${username}" style="font-weight:600; color:#333;">${u.displayName}</label>
+            </div>
+            <div class="pc-sub">${hasGames ? eventGameIds.length + ' games (for event)' : 'No games selected'}</div>
+            ${hasGames ? `<div class="pc-row" style="margin-top:8px;">
+                <input type="checkbox" id="pc-games-${username}" disabled>
+                <label for="pc-games-${username}">Include their games</label>
+            </div>` : ''}
+        `;
+        
+        const mainCb = div.querySelector('#pc-check-' + username);
+        const gamesCb = div.querySelector('#pc-games-' + username);
+        mainCb.addEventListener('change', () => syncPC(username, div));
+        if (gamesCb) gamesCb.addEventListener('click', e => e.stopPropagation());
+        div.addEventListener('click', (e) => {
+            if (e.target.closest('label') || e.target.type === 'checkbox') return;
+            mainCb.checked = !mainCb.checked;
+            syncPC(username, div);
+        });
+        
+        container.appendChild(div);
+    });
+}
+
+function openEventVote(voteId) {
+    const vote = currentEvent.votes[voteId];
+    if (!vote) return;
+    currentVote = vote;
+    voteFilteredGames = vote.filteredGames || [];
+    
+    updateVotePageIcons();
+    
+    if (vote.status === 'completed') {
+        const _scores = (vote.filteredGames||[]).map(g => {
+            const gv = (vote.votes||{})[g.id] || {};
+            let s = 0;
+            Object.values(gv).forEach(v => { if(v==='promote') s++; if(v==='veto') s--; });
+            return s;
+        });
+        const _max = Math.max(..._scores, 0);
+        const _tied = _scores.filter(s => s === _max).length;
+        renderResultPage(vote.winner, vote, _tied);
+        goToPage('page-vote-result');
+    } else {
+        renderVotingList();
+        goToPage('page-vote-voting');
+    }
+}
+
+function goBackToEvent() {
+    if (currentEvent) {
+        openEvent(currentEvent.id);
+    } else {
+        goBackToGroup();
+    }
+}
+
+async function confirmDeleteEvent() {
+    if (confirm('Are you sure you want to delete this event? This cannot be undone.')) {
+        showLoading(true);
+        delete activeGroup.events[currentEvent.id];
+        await fsSaveGroup(activeGroup);
+        showLoading(false);
+        goBackToGroup();
+    }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// EVENT COLLECTION
+// ════════════════════════════════════════════════════════════════════
+
+async function viewEventCollection() {
+    showLoading(true);
+    activeGroup = await fsGetGroup(activeGroupCode);
+    currentEvent = activeGroup.events[currentEvent.id];
+    
+    if (!currentEvent.eventPromotions) {
+        currentEvent.eventPromotions = {};
+    }
+    
+    const iconEl = document.getElementById('event-collection-icon');
+    if (activeGroup.groupPhoto) {
+        iconEl.innerHTML = `<img src="${activeGroup.groupPhoto}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;" alt="Group">`;
+        iconEl.className = '';
+    } else {
+        iconEl.textContent = '🎲';
+        iconEl.className = 'logo';
+    }
+    
+    initECSliders();
+    await renderECOwnerCheckboxes();
+    await renderEventCollection();
+    
+    showLoading(false);
+    goToPage('page-event-collection');
+}
+
+function initECSliders() {
+    if (!window.ecSliders) window.ecSliders = {};
+    ecSliders.playerCount = new DualRange('ec-dr-players', { min:1, max:20, step:1, minVal:1, maxVal:20, labelEl:'ec-player-range-label', fmt: (a,b) => a+' – '+b });
+    ecSliders.complexity = new DualRange('ec-dr-complexity', { min:1, max:5, step:0.1, minVal:1, maxVal:5, labelEl:'ec-complexity-label', fmt: (a,b) => a.toFixed(1)+' – '+b.toFixed(1) });
+    ecSliders.rating = new DualRange('ec-dr-rating', { min:1, max:10, step:0.1, minVal:1, maxVal:10, labelEl:'ec-rating-label', fmt: (a,b) => a.toFixed(1)+' – '+b.toFixed(1) });
+}
+
+function toggleECFilters() {
+    const panel = document.getElementById('ec-filters-panel');
+    const button = document.getElementById('ec-filter-toggle');
+    const isHidden = panel.style.display === 'none';
+    panel.style.display = isHidden ? 'block' : 'none';
+    button.textContent = isHidden ? 'Hide Filters' : 'Show Filters';
+}
+
+async function renderECOwnerCheckboxes() {
+    const container = document.getElementById('ec-owner-checkboxes');
+    container.innerHTML = '';
+    
+    const members = await Promise.all(currentEvent.attendees.map(username => fsGetUser(username)));
+    
+    members.forEach(u => {
+        if (!u) return;
+        const label = document.createElement('label');
+        label.style.cssText = 'display:flex; align-items:center; gap:4px; cursor:pointer; background:#fff; padding:6px 10px; border:2px solid #e0e0e0; border-radius:6px;';
+        
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = true;
+        cb.id = 'ec-owner-' + u.username;
+        cb.style.margin = '0';
+        
+        const text = document.createTextNode(u.displayName);
+        
+        label.appendChild(cb);
+        label.appendChild(text);
+        container.appendChild(label);
+    });
+}
+
+async function renderEventCollection() {
+    const container = document.getElementById('event-collection-list');
+    
+    const noExp = document.getElementById('ec-no-expansions').checked;
+    const playerMin = ecSliders.playerCount.getMin();
+    const playerMax = ecSliders.playerCount.getMax();
+    const allPlayerCounts = document.getElementById('ec-filter-all-player-counts').checked;
+    const recOnly = document.getElementById('ec-filter-rec-players').checked;
+    const bestOnly = document.getElementById('ec-filter-best-players').checked;
+    const cMin = ecSliders.complexity.getMin();
+    const cMax = ecSliders.complexity.getMax();
+    const rMin = ecSliders.rating.getMin();
+    const rMax = ecSliders.rating.getMax();
+    
+    const selectedOwners = [];
+    currentEvent.attendees.forEach(username => {
+        const cb = document.getElementById('ec-owner-' + username);
+        if (cb && cb.checked) selectedOwners.push(username);
+    });
+    
+    const members = await Promise.all(currentEvent.attendees.map(username => fsGetUser(username)));
+    const gameMap = new Map();
+    
+    members.forEach(u => {
+        if (!u) return;
+        if (!selectedOwners.includes(u.username)) return;
+        
+        const bringingGameIds = currentEvent.attendeeGames[u.username] || [];
+        const allGames = u.games || [];
+        
+        allGames.forEach(game => {
+            if (!bringingGameIds.includes(game.id)) return;
+            
+            if (!gameMap.has(game.id)) {
+                gameMap.set(game.id, { ...game, owners: [u.username] });
+            } else {
+                gameMap.get(game.id).owners.push(u.username);
+            }
+        });
+    });
+    
+    let allGames = Array.from(gameMap.values());
+    
+    allGames = allGames.filter(g => {
+        if (noExp && g.itemType === 'expansion') return false;
+        
+        let playerCountOk = false;
+        if (allPlayerCounts) {
+            playerCountOk = g.minPlayers <= playerMin && g.maxPlayers >= playerMax;
+        } else {
+            playerCountOk = !(g.maxPlayers < playerMin || g.minPlayers > playerMax);
+        }
+        if (!playerCountOk) return false;
+        
+        if (recOnly || bestOnly) {
+            const playerCounts = [];
+            for (let p = playerMin; p <= playerMax; p++) {
+                playerCounts.push(p);
+            }
+            
+            if (recOnly) {
+                const hasRecPlayers = g.recPlayers && g.recPlayers.length > 0;
+                if (!hasRecPlayers) return false;
+                
+                if (allPlayerCounts) {
+                    const allRecommended = playerCounts.every(p => g.recPlayers.includes(p));
+                    if (!allRecommended) return false;
+                } else {
+                    const anyRecommended = playerCounts.some(p => g.recPlayers.includes(p));
+                    if (!anyRecommended) return false;
+                }
+            }
+            
+            if (bestOnly) {
+                const hasBestPlayers = g.bestPlayers && g.bestPlayers.length > 0;
+                if (!hasBestPlayers) return false;
+                
+                if (allPlayerCounts) {
+                    const allBest = playerCounts.every(p => g.bestPlayers.includes(p));
+                    if (!allBest) return false;
+                } else {
+                    const anyBest = playerCounts.some(p => g.bestPlayers.includes(p));
+                    if (!anyBest) return false;
+                }
+            }
+        }
+        
+        return g.complexity >= cMin && g.complexity <= cMax &&
+               g.average >= rMin && g.average <= rMax;
+    });
+    
+    const promotions = currentEvent.eventPromotions || {};
+    const sortBy = document.getElementById('ec-sort-select').value;
+    
+    const scored = allGames.map(game => {
+        const gp = promotions[game.id] || {};
+        const promoteCount = Object.values(gp).filter(v => v === 'promote').length;
+        return { game, gp, score: promoteCount };
+    });
+    
+    if (sortBy === 'alphabetical') {
+        scored.sort((a, b) => a.game.name.localeCompare(b.game.name));
+    } else {
+        scored.sort((a, b) => b.score - a.score);
+    }
+    
+    document.getElementById('event-collection-count-label').textContent = 
+        scored.length + ' game' + (scored.length !== 1 ? 's' : '') + ' available';
+    
+    container.innerHTML = '';
+    
+    const manageDiv = document.createElement('div');
+    manageDiv.style.cssText = 'background:#e7f0ff; border:2px solid #667eea; border-radius:8px; padding:12px; margin-bottom:16px; text-align:center;';
+    manageDiv.innerHTML = `
+        <p style="font-size:14px; color:#333; margin-bottom:8px;">Select which games from your collection you're bringing</p>
+        <button onclick="manageMyEventGames()">Manage My Games</button>
+    `;
+    container.appendChild(manageDiv);
+    
+    scored.forEach(({ game, gp }) => {
+        const myAction = gp[session.username] || 'neutral';
+        const promotes = Object.entries(gp).filter(([,v]) => v === 'promote');
+        
+        const div = document.createElement('div');
+        div.className = 'game-item' + (myAction === 'promote' ? ' promoted' : '');
+        
+        let promoteTags = '';
+        if (promotes.length) {
+            const tags = [];
+            promotes.forEach(([u]) => { tags.push(`<span class="vote-tag promote">👍 ${u}</span>`); });
+            promoteTags = `<div class="game-vote-summary">${tags.join('')}</div>`;
+        }
+        
+        let vetoTag = '';
+        if (myAction === 'veto') {
+            vetoTag = '<div class="game-vote-summary"><span class="vote-tag veto">👎 You vetoed this</span></div>';
+        }
+        
+        const imgHtml = `<div class="game-image-placeholder">${getGameInitials(game.name)}</div>`;
+        const bggUrl = `https://boardgamegeek.com/boardgame/${game.id}`;
+        
+        div.innerHTML = `
+            ${imgHtml}
+            <div class="game-info">
+                <div class="game-name"><a href="${bggUrl}" target="_blank" rel="noopener noreferrer" style="color:#667eea; text-decoration:none; font-weight:600;">${game.name}</a> (${game.yearPublished})</div>
+                <div class="game-details">${game.minPlayers}–${game.maxPlayers} players • ${game.playingTime} min • Complexity ${game.complexity.toFixed(1)} • Rating ${game.average.toFixed(1)}</div>
+                <div class="game-owners">Brought by: ${(game.owners||[]).join(', ')}</div>
+                ${promoteTags}
+                ${vetoTag}
+            </div>
+            <div class="game-actions">
+                ${myAction === 'neutral'
+                    ? `<button class="promote-btn" onclick="eventPromote('${game.id}','promote')">👍</button>
+                       <button class="danger" onclick="eventPromote('${game.id}','veto')">👎</button>`
+                    : `<button class="secondary" onclick="eventPromote('${game.id}','neutral')">Undo</button>`}
+            </div>
+        `;
+        container.appendChild(div);
+    });
+}
+
+async function eventPromote(gameId, action) {
+    if (!currentEvent.eventPromotions) currentEvent.eventPromotions = {};
+    if (!currentEvent.eventPromotions[gameId]) currentEvent.eventPromotions[gameId] = {};
+    
+    if (action === 'neutral') {
+        delete currentEvent.eventPromotions[gameId][session.username];
+    } else {
+        currentEvent.eventPromotions[gameId][session.username] = action;
+    }
+    
+    showLoading(true);
+    await fsSaveGroup(activeGroup);
+    showLoading(false);
+    
+    renderEventCollection();
+}
+
+function goBackToEventCollection() {
+    viewEventCollection();
+}
+
+// ════════════════════════════════════════════════════════════════════
+// MANAGE MY EVENT GAMES
+// ════════════════════════════════════════════════════════════════════
+
+async function manageMyEventGames() {
+    showLoading(true);
+    
+    const iconEl = document.getElementById('manage-event-games-icon');
+    if (activeGroup.groupPhoto) {
+        iconEl.innerHTML = `<img src="${activeGroup.groupPhoto}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;" alt="Group">`;
+        iconEl.className = '';
+    } else {
+        iconEl.textContent = '🎲';
+        iconEl.className = 'logo';
+    }
+    
+    const user = await fsGetUser(session.username);
+    const myGames = user.games || [];
+    const bringingIds = currentEvent.attendeeGames[session.username] || [];
+    
+    const container = document.getElementById('manage-event-games-list');
+    container.innerHTML = '';
+    
+    myGames.forEach(game => {
+        const isBringing = bringingIds.includes(game.id);
+        
+        const div = document.createElement('div');
+        div.className = 'game-item';
+        div.style.cursor = 'pointer';
+        div.onclick = () => toggleEventGame(game.id);
+        
+        const imgHtml = `<div class="game-image-placeholder">${getGameInitials(game.name)}</div>`;
+        const bggUrl = `https://boardgamegeek.com/boardgame/${game.id}`;
+        
+        div.innerHTML = `
+            ${imgHtml}
+            <div class="game-info">
+                <div class="game-name"><a href="${bggUrl}" target="_blank" rel="noopener noreferrer" style="color:#667eea; text-decoration:none; font-weight:600;" onclick="event.stopPropagation()">${game.name}</a> (${game.yearPublished})</div>
+                <div class="game-details">${game.minPlayers}–${game.maxPlayers} players • ${game.playingTime} min</div>
+            </div>
+            <div class="game-actions">
+                <input type="checkbox" id="bring-${game.id}" ${isBringing ? 'checked' : ''} style="width:24px; height:24px; cursor:pointer;" onclick="event.stopPropagation(); toggleEventGame('${game.id}')">
+            </div>
+        `;
+        container.appendChild(div);
+    });
+    
+    showLoading(false);
+    goToPage('page-manage-event-games');
+}
+
+function toggleEventGame(gameId) {
+    const cb = document.getElementById('bring-' + gameId);
+    if (!cb) return;
+    
+    cb.checked = !cb.checked;
+    
+    if (!currentEvent.attendeeGames[session.username]) {
+        currentEvent.attendeeGames[session.username] = [];
+    }
+    
+    const bringing = currentEvent.attendeeGames[session.username];
+    
+    if (cb.checked) {
+        if (!bringing.includes(gameId)) {
+            bringing.push(gameId);
+        }
+    } else {
+        const idx = bringing.indexOf(gameId);
+        if (idx > -1) {
+            bringing.splice(idx, 1);
+        }
+    }
+}
+
+async function selectAllMyEventGames() {
+    const user = await fsGetUser(session.username);
+    const myGames = user.games || [];
+    
+    currentEvent.attendeeGames[session.username] = myGames.map(g => g.id);
+    
+    myGames.forEach(game => {
+        const cb = document.getElementById('bring-' + game.id);
+        if (cb) cb.checked = true;
+    });
+}
+
+async function deselectAllMyEventGames() {
+    currentEvent.attendeeGames[session.username] = [];
+    
+    const user = await fsGetUser(session.username);
+    const myGames = user.games || [];
+    myGames.forEach(game => {
+        const cb = document.getElementById('bring-' + game.id);
+        if (cb) cb.checked = false;
+    });
+}
+
+async function saveMyEventGames() {
+    showLoading(true);
+    await fsSaveGroup(activeGroup);
+    showLoading(false);
+    
+    alert('Game selection saved!');
+    goBackToEventCollection();
+}
+
+// ════════════════════════════════════════════════════════════════════
+// PAST EVENTS
+// ════════════════════════════════════════════════════════════════════
+
+async function viewPastEvents() {
+    showLoading(true);
+    activeGroup = await fsGetGroup(activeGroupCode);
+    
+    const iconEl = document.getElementById('past-events-icon');
+    if (activeGroup.groupPhoto) {
+        iconEl.innerHTML = `<img src="${activeGroup.groupPhoto}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;" alt="Group">`;
+        iconEl.className = '';
+    } else {
+        iconEl.textContent = '🎲';
+        iconEl.className = 'logo';
+    }
+    
+    const container = document.getElementById('past-events-list');
+    container.innerHTML = '';
+    
+    const allEvents = Object.values(activeGroup.events || {});
+    const pastEvents = allEvents.filter(e => {
+        if (!isEventPast(e.date)) return false;
+        return e.isPublic || e.attendees.includes(session.username);
+    });
+    
+    if (pastEvents.length === 0) {
+        container.innerHTML = '<p style="color:#666; font-size:13px; padding:8px 0;">No past events.</p>';
+        showLoading(false);
+        goToPage('page-past-events');
+        return;
+    }
+    
+    pastEvents.sort((a, b) => new Date(b.date) - new Date(a.date));
+    
+    pastEvents.forEach(event => {
+        const div = document.createElement('div');
+        div.className = 'vote-card';
+        div.onclick = () => openEvent(event.id);
+        
+        const eventName = event.name || formatEventDate(event.date);
+        
+        div.innerHTML = `
+            <div>
+                <div class="vc-title">${eventName}</div>
+                <div class="vc-sub">${formatEventDate(event.date)} • ${event.attendees.length} attendee${event.attendees.length !== 1 ? 's' : ''}</div>
+            </div>
+            <div class="vc-badge completed">Past</div>
+        `;
+        container.appendChild(div);
+    });
+    
+    showLoading(false);
+    goToPage('page-past-events');
 }
 
 // ════════════════════════════════════════════════════════════════════
