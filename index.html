@@ -2453,55 +2453,81 @@ async function goToVoteParticipants() {
 }
 
 async function goToVoteFilters() {
-    // Reload activeGroup from database using the global activeGroupCode
-    activeGroup = await fsGetGroup(activeGroupCode);
-    
-    // Reload the vote to get latest saved state
-    const savedVote = activeGroup.votes[currentVote.id];
-    console.log('goToVoteFilters - currentVote.id:', currentVote.id);
-    console.log('goToVoteFilters - savedVote:', savedVote);
-    console.log('goToVoteFilters - savedVote.filters:', savedVote?.filters);
-    
-    if (savedVote) {
-        currentVote = savedVote;
-    }
-    
-    console.log('goToVoteFilters - currentVote.filters after reload:', currentVote.filters);
-    
-    // Rebuild _allGames if not present (needed for filter application)
-    if (!currentVote._allGames && currentVote.includeGamesFrom) {
-        const gameMap = new Map();
-        const members = await Promise.all(currentVote.includeGamesFrom.map(username => fsGetUser(username)));
+    try {
+        // Reload activeGroup from database using the global activeGroupCode
+        activeGroup = await fsGetGroup(activeGroupCode);
         
-        for (const u of members) {
-            if (!u) continue;
-            const games = u.games || [];
-            games.forEach(game => {
-                if (!gameMap.has(game.id)) {
-                    gameMap.set(game.id, { ...game, owners: [u.username] });
-                } else {
-                    gameMap.get(game.id).owners.push(u.username);
-                }
-            });
+        // Reload the vote to get latest saved state
+        const savedVote = activeGroup.votes[currentVote.id];
+        console.log('goToVoteFilters - currentVote.id:', currentVote.id);
+        console.log('goToVoteFilters - savedVote:', savedVote);
+        console.log('goToVoteFilters - savedVote.filters:', savedVote?.filters);
+        
+        if (savedVote) {
+            currentVote = savedVote;
+        } else {
+            console.warn('goToVoteFilters - WARNING: savedVote not found for ID:', currentVote.id);
+            console.log('goToVoteFilters - Available vote IDs:', Object.keys(activeGroup.votes || {}));
         }
         
-        const allGames = Array.from(gameMap.values());
-        allGames.sort((a, b) => a.name.localeCompare(b.name));
-        currentVote._allGames = allGames;
+        console.log('goToVoteFilters - currentVote.filters after reload:', currentVote.filters);
+        
+        // Rebuild _allGames if not present (needed for filter application)
+        if (!currentVote._allGames && currentVote.includeGamesFrom) {
+            const gameMap = new Map();
+            const members = await Promise.all(currentVote.includeGamesFrom.map(username => fsGetUser(username)));
+            
+            for (const u of members) {
+                if (!u) continue;
+                const games = u.games || [];
+                games.forEach(game => {
+                    if (!gameMap.has(game.id)) {
+                        gameMap.set(game.id, { ...game, owners: [u.username] });
+                    } else {
+                        gameMap.get(game.id).owners.push(u.username);
+                    }
+                });
+            }
+            
+            const allGames = Array.from(gameMap.values());
+            allGames.sort((a, b) => a.name.localeCompare(b.name));
+            currentVote._allGames = allGames;
+        }
+        
+        updateVotePageIcons();
+        goToPage('page-vote-filters');
+        
+        // Use requestAnimationFrame for more reliable DOM ready detection
+        await new Promise(resolve => {
+            requestAnimationFrame(() => {
+                requestAnimationFrame(resolve); // Double RAF for better reliability
+            });
+        });
+        
+        // Verify DOM elements exist before proceeding
+        const filterPlayersEl = document.getElementById('filter-players');
+        const filterNoExpEl = document.getElementById('filter-no-expansions');
+        
+        if (!filterPlayersEl || !filterNoExpEl) {
+            console.error('goToVoteFilters - ERROR: DOM elements not ready!');
+            // Try one more time with a delay
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
+        // Clear any warnings
+        const warningEl1 = document.getElementById('player-count-warning');
+        const warningEl2 = document.getElementById('player-range-warning');
+        if (warningEl1) warningEl1.style.display = 'none';
+        if (warningEl2) warningEl2.style.display = 'none';
+        
+        // Initialize sliders (will restore saved values including player count)
+        initSliders();
+        
+        console.log('goToVoteFilters - COMPLETE');
+    } catch (error) {
+        console.error('goToVoteFilters - ERROR:', error);
+        showAlert('vf-error', 'Failed to load filters. Please try again.');
     }
-    
-    updateVotePageIcons();
-    goToPage('page-vote-filters');
-    
-    // Wait a moment for DOM to be ready
-    await new Promise(resolve => setTimeout(resolve, 50));
-    
-    // Clear any warnings
-    document.getElementById('player-count-warning').style.display = 'none';
-    document.getElementById('player-range-warning').style.display = 'none';
-    
-    // Initialize sliders (will restore saved values including player count)
-    initSliders();
 }
 
 function openVote(voteId) {
@@ -2760,7 +2786,12 @@ function initSliders() {
     // Check if we have saved filters to restore
     const hasSavedFilters = currentVote && currentVote.filters && Object.keys(currentVote.filters).length > 0;
     
+    console.log('initSliders - currentVote:', currentVote);
+    console.log('initSliders - currentVote.filters:', currentVote?.filters);
+    console.log('initSliders - hasSavedFilters:', hasSavedFilters);
+    
     if (hasSavedFilters) {
+        console.log('initSliders - RESTORING saved filters');
         // Restore filter values from saved state
         const f = currentVote.filters;
         
@@ -2791,6 +2822,7 @@ function initSliders() {
             sliders.rating.setValues(f.rMin, f.rMax);
         }
     } else {
+        console.log('initSliders - NO saved filters - setting defaults');
         // No saved filters - set defaults for new vote
         document.getElementById('filter-no-expansions').checked = true;
         document.getElementById('filter-rec-players').checked = false;
@@ -2928,6 +2960,10 @@ async function vfApply() {
         rMin, 
         rMax 
     };
+    
+    console.log('vfApply - Setting currentVote.filters:', JSON.stringify(currentVote.filters));
+    console.log('vfApply - currentVote.id:', currentVote.id);
+    
     showLoading(true);
     
     // Import group promotions and vetoes if requested
@@ -2961,11 +2997,20 @@ async function vfApply() {
 }
 
 async function saveVote() {
+    console.log('saveVote - START - currentVote.id:', currentVote.id);
+    console.log('saveVote - currentVote.filters before save:', JSON.stringify(currentVote.filters));
+    
     activeGroup = await fsGetGroup(activeGroupCode);
     const toSave = { ...currentVote };
     delete toSave._allGames;
+    
+    console.log('saveVote - toSave.filters:', JSON.stringify(toSave.filters));
+    console.log('saveVote - Saving to activeGroup.votes[' + currentVote.id + ']');
+    
     activeGroup.votes[currentVote.id] = toSave;
     await fsSaveGroup(activeGroup);
+    
+    console.log('saveVote - COMPLETE - Vote saved to database');
 }
 
 function confirmDeleteVote() {
