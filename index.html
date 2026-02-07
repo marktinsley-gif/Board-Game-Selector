@@ -2491,15 +2491,7 @@ async function goToVoteFilters() {
     document.getElementById('player-count-warning').style.display = 'none';
     document.getElementById('player-range-warning').style.display = 'none';
     
-    // Set player count - use saved value if exists, otherwise default to participant count
-    const hasSavedFilters = currentVote.filters && Object.keys(currentVote.filters).length > 0;
-    if (hasSavedFilters && currentVote.filters.players) {
-        document.getElementById('filter-players').value = currentVote.filters.players;
-    } else if (currentVote.participants && currentVote.participants.length > 0) {
-        document.getElementById('filter-players').value = currentVote.participants.length;
-    }
-    
-    // Initialize sliders after page is loaded (will restore saved values)
+    // Initialize sliders (will restore saved values including player count)
     initSliders();
 }
 
@@ -2727,13 +2719,7 @@ async function vpContinue() {
     // Navigate to filters page FIRST
     goToPage('page-vote-filters');
     
-    // THEN set values and initialize sliders (after DOM exists)
-    if (!hasSavedFilters || !currentVote.filters.useRange) {
-        // Set player count from saved filters or default to participant count
-        const playerCount = (hasSavedFilters && currentVote.filters.players) ? currentVote.filters.players : participants.length;
-        document.getElementById('filter-players').value = playerCount;
-    }
-    
+    // Initialize sliders (will handle setting player count and all filter values)
     initSliders();
     
     // Show warning if participant count changed
@@ -2803,6 +2789,11 @@ function initSliders() {
         document.getElementById('filter-player-range').checked = false;
         document.getElementById('filter-all-player-counts').checked = false;
         togglePlayerCountRange(); // Ensure UI matches
+        
+        // Set default player count to number of participants
+        if (currentVote && currentVote.participants && currentVote.participants.length > 0) {
+            document.getElementById('filter-players').value = currentVote.participants.length;
+        }
     }
 }
 
