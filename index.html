@@ -83,6 +83,7 @@ button.ghost:hover { background:#667eea; color:white; }
 .list-item:hover { background:#f0f1f3; }
 .list-item.status-looking { background:#e7f3ff; border-left:4px solid #667eea; }
 .list-item.status-playing { background:#e8f5e9; border-left:4px solid #28a745; }
+.list-item.status-late { background:#fff3cd; border-left:4px solid #ffc107; }
 .list-item.status-left { background:#e0e0e0; opacity:0.7; border-left:4px solid #6c757d; }
 .list-item-left { flex:1; }
 .list-item-left .item-title { font-weight:600; color:#333; }
@@ -411,10 +412,13 @@ button.ghost:hover { background:#667eea; color:white; }
   <div class="card">
     <div class="topbar">
       <div class="topbar-left">
-        <span id="group-icon-header" class="logo" onclick="goHome()">🎲</span>
+        <span id="group-icon-header" class="logo" onclick="goToGroupOrHome()">🎲</span>
         <span id="group-header-name" style="font-weight:700; color:#333; font-size:18px;"></span>
       </div>
-      <button class="secondary" onclick="doLogout()">Log Out</button>
+      <div style="display:flex; gap:8px;">
+        <button class="secondary" onclick="goToGroupOrHome()">Back to Home</button>
+        <button class="secondary" onclick="doLogout()">Log Out</button>
+      </div>
     </div>
 
     <h3>Members</h3>
@@ -453,7 +457,7 @@ button.ghost:hover { background:#667eea; color:white; }
     </div>
 
     <div class="section">
-      <button onclick="goHome()">🏠 Back to Home</button>
+      <button onclick="goToGroupOrHome()">🏠 Back to Home</button>
       <button id="admin-details-btn" onclick="viewGroupDetails()" style="display:none;">Admin Details</button>
       <button class="secondary" onclick="doLeaveGroup()">Leave This Group</button>
     </div>
@@ -466,7 +470,7 @@ button.ghost:hover { background:#667eea; color:white; }
 <div class="page" id="page-group-members">
   <div class="card">
     <div class="topbar">
-      <span id="gm-icon-header" class="logo" onclick="goHome()">🎲</span>
+      <span id="gm-icon-header" class="logo" onclick="goToGroupOrHome()">🎲</span>
       <button class="secondary" onclick="doLogout()">Log Out</button>
     </div>
     <h2>Current Members</h2>
@@ -494,7 +498,7 @@ button.ghost:hover { background:#667eea; color:white; }
 <div class="page" id="page-group-details">
   <div class="card">
     <div class="topbar">
-      <span id="gd-icon-header" class="logo" onclick="goHome()">🎲</span>
+      <span id="gd-icon-header" class="logo" onclick="goToGroupOrHome()">🎲</span>
       <button class="secondary" onclick="doLogout()">Log Out</button>
     </div>
     <h2 id="group-details-name"></h2>
@@ -525,7 +529,7 @@ button.ghost:hover { background:#667eea; color:white; }
 <div class="page" id="page-group-collection">
   <div class="card">
     <div class="topbar">
-      <span id="gc-icon-header" class="logo" onclick="goHome()">🎲</span>
+      <span id="gc-icon-header" class="logo" onclick="goToGroupOrHome()">🎲</span>
       <div style="display:flex; gap:8px;">
         <button class="secondary" onclick="goBackToGroup()">Back to Group</button>
         <button class="secondary" onclick="doLogout()">Log Out</button>
@@ -545,6 +549,12 @@ button.ghost:hover { background:#667eea; color:white; }
         <select id="gc-sort-select" onchange="renderGroupCollection()" style="padding:6px 10px; border:2px solid #e0e0e0; border-radius:6px; font-size:14px;">
           <option value="promotions">Promotions</option>
           <option value="alphabetical">Alphabetical</option>
+          <option value="rating-high">BGG Rating (High to Low)</option>
+          <option value="rank">BGG Rank (Best to Worst)</option>
+          <option value="complexity-high">Complexity (High to Low)</option>
+          <option value="complexity-low">Complexity (Low to High)</option>
+          <option value="length-short">Length (Short to Long)</option>
+          <option value="length-long">Length (Long to Short)</option>
         </select>
       </div>
     </div>
@@ -615,7 +625,7 @@ button.ghost:hover { background:#667eea; color:white; }
 <div class="page" id="page-create-event">
   <div class="card">
     <div class="topbar">
-      <span id="create-event-icon" class="logo" onclick="goHome()">🎲</span>
+      <span id="create-event-icon" class="logo" onclick="goToGroupOrHome()">🎲</span>
       <button class="secondary" onclick="doLogout()">Log Out</button>
     </div>
     <h2>Create New Event</h2>
@@ -647,7 +657,7 @@ button.ghost:hover { background:#667eea; color:white; }
 <div class="page" id="page-event-details">
   <div class="card">
     <div class="topbar">
-      <span id="event-details-icon" class="logo" onclick="goHome()">🎲</span>
+      <span id="event-details-icon" class="logo" onclick="goToGroupOrHome()">🎲</span>
       <button class="secondary" onclick="doLogout()">Log Out</button>
     </div>
     
@@ -711,7 +721,7 @@ button.ghost:hover { background:#667eea; color:white; }
 <div class="page" id="page-event-collection">
   <div class="card">
     <div class="topbar">
-      <span id="event-collection-icon" class="logo" onclick="goHome()">🎲</span>
+      <span id="event-collection-icon" class="logo" onclick="goToGroupOrHome()">🎲</span>
       <div style="display:flex; gap:8px;">
         <button class="secondary" onclick="goBackToEvent()">Back to Event</button>
         <button class="secondary" onclick="doLogout()">Log Out</button>
@@ -732,6 +742,12 @@ button.ghost:hover { background:#667eea; color:white; }
         <select id="ec-sort-select" onchange="renderEventCollection()" style="padding:6px 10px; border:2px solid #e0e0e0; border-radius:6px; font-size:14px;">
           <option value="promotions">Promotions</option>
           <option value="alphabetical">Alphabetical</option>
+          <option value="rating-high">BGG Rating (High to Low)</option>
+          <option value="rank">BGG Rank (Best to Worst)</option>
+          <option value="complexity-high">Complexity (High to Low)</option>
+          <option value="complexity-low">Complexity (Low to High)</option>
+          <option value="length-short">Length (Short to Long)</option>
+          <option value="length-long">Length (Long to Short)</option>
         </select>
       </div>
     </div>
@@ -801,7 +817,7 @@ button.ghost:hover { background:#667eea; color:white; }
 <div class="page" id="page-manage-event-games">
   <div class="card">
     <div class="topbar">
-      <span id="manage-event-games-icon" class="logo" onclick="goHome()">🎲</span>
+      <span id="manage-event-games-icon" class="logo" onclick="goToGroupOrHome()">🎲</span>
       <div style="display:flex; gap:8px;">
         <button class="secondary" onclick="goBackToEventCollection()">Back</button>
         <button class="secondary" onclick="doLogout()">Log Out</button>
@@ -830,7 +846,7 @@ button.ghost:hover { background:#667eea; color:white; }
 <div class="page" id="page-past-events">
   <div class="card">
     <div class="topbar">
-      <span id="past-events-icon" class="logo" onclick="goHome()">🎲</span>
+      <span id="past-events-icon" class="logo" onclick="goToGroupOrHome()">🎲</span>
       <button class="secondary" onclick="doLogout()">Log Out</button>
     </div>
     
@@ -846,7 +862,7 @@ button.ghost:hover { background:#667eea; color:white; }
 <div class="page" id="page-played-games">
   <div class="card">
     <div class="topbar">
-      <span id="played-games-icon" class="logo" onclick="goHome()">🎲</span>
+      <span id="played-games-icon" class="logo" onclick="goToGroupOrHome()">🎲</span>
       <button class="secondary" onclick="doLogout()">Log Out</button>
     </div>
     
@@ -863,7 +879,7 @@ button.ghost:hover { background:#667eea; color:white; }
 <div class="page" id="page-collection">
   <div class="card">
     <div class="topbar">
-      <span class="logo" onclick="goHome()">🎲</span>
+      <span class="logo" onclick="goToGroupOrHome()">🎲</span>
       <button class="secondary" onclick="doLogout()">Log Out</button>
     </div>
     <h2>Add Your Game Collection</h2>
@@ -884,7 +900,7 @@ button.ghost:hover { background:#667eea; color:white; }
 <div class="page" id="page-vote-participants">
   <div class="card">
     <div class="topbar">
-      <span id="vote-icon-participants" class="logo" onclick="goHome()">🎲</span>
+      <span id="vote-icon-participants" class="logo" onclick="goToGroupOrHome()">🎲</span>
       <button class="secondary" onclick="doLogout()">Log Out</button>
     </div>
     <h2>Select Participants</h2>
@@ -894,9 +910,14 @@ button.ghost:hover { background:#667eea; color:white; }
     <label for="vote-name-input">Vote Name (optional)</label>
     <input type="text" id="vote-name-input" placeholder="e.g. Friday Night Games, March 2026">
     
-    <div class="checkbox-row" style="margin-top:12px; margin-bottom:16px;">
+    <div class="checkbox-row" style="margin-top:12px; margin-bottom:8px;">
       <input type="checkbox" id="import-group-promotions" checked>
       <label for="import-group-promotions">Import promotions from event collection</label>
+    </div>
+    
+    <div class="checkbox-row" style="margin-top:0px; margin-bottom:16px;">
+      <input type="checkbox" id="include-all-games" onchange="toggleAllGameInclusions()">
+      <label for="include-all-games">Include all games from all collections</label>
     </div>
     
     <div class="participant-grid" id="vp-cards"></div>
@@ -911,7 +932,7 @@ button.ghost:hover { background:#667eea; color:white; }
 <div class="page" id="page-vote-filters">
   <div class="card">
     <div class="topbar">
-      <span id="vote-icon-filters" class="logo" onclick="goHome()">🎲</span>
+      <span id="vote-icon-filters" class="logo" onclick="goToGroupOrHome()">🎲</span>
       <button class="secondary" onclick="doLogout()">Log Out</button>
     </div>
     <h2>Filter Games</h2>
@@ -997,7 +1018,7 @@ button.ghost:hover { background:#667eea; color:white; }
 <div class="page" id="page-vote-voting">
   <div class="card">
     <div class="topbar">
-      <span id="vote-icon-voting" class="logo" onclick="goHome()">🎲</span>
+      <span id="vote-icon-voting" class="logo" onclick="goToGroupOrHome()">🎲</span>
       <div style="display:flex; gap:8px;">
         <button class="secondary" style="padding:8px 12px; font-size:13px;" onclick="goToVoteFilters()">Filters</button>
         <button class="secondary" style="padding:8px 12px; font-size:13px;" id="vote-voting-back-btn" onclick="goBackToGroup()">Group</button>
@@ -1024,7 +1045,7 @@ button.ghost:hover { background:#667eea; color:white; }
 <div class="page" id="page-vote-result">
   <div class="card" style="text-align:center;">
     <div class="topbar">
-      <span id="vote-icon-result" class="logo" onclick="goHome()">🎲</span>
+      <span id="vote-icon-result" class="logo" onclick="goToGroupOrHome()">🎲</span>
       <div style="display:flex; gap:8px;">
         <button class="secondary" style="padding:8px 12px; font-size:13px;" onclick="goToVoteFilters()">Filters</button>
         <button class="secondary" style="padding:8px 12px; font-size:13px;" id="vote-result-back-btn" onclick="goBackToGroup()">Group</button>
@@ -1046,7 +1067,7 @@ button.ghost:hover { background:#667eea; color:white; }
 <div class="page" id="page-schedule-game">
   <div class="card">
     <div class="topbar">
-      <span id="schedule-game-icon" class="logo" onclick="goHome()">🎲</span>
+      <span id="schedule-game-icon" class="logo" onclick="goToGroupOrHome()">🎲</span>
       <button class="secondary" onclick="doLogout()">Log Out</button>
     </div>
     
@@ -1083,7 +1104,7 @@ button.ghost:hover { background:#667eea; color:white; }
 <div class="page" id="page-admin">
   <div class="card">
     <div class="topbar">
-      <span class="logo" onclick="goHome()">🎲</span>
+      <span class="logo" onclick="goToGroupOrHome()">🎲</span>
       <button class="secondary" onclick="doLogout()">Log Out</button>
     </div>
     <h2>Admin Panel</h2>
@@ -1094,7 +1115,7 @@ button.ghost:hover { background:#667eea; color:white; }
     <h3 style="margin-top:30px; margin-bottom:12px;">Groups</h3>
     <div id="admin-group-list"></div>
     
-    <button class="secondary" onclick="goHome()" style="margin-top:20px;">Back to Home</button>
+    <button class="secondary" onclick="goToGroupOrHome()" style="margin-top:20px;">Back to Home</button>
   </div>
 </div>
 
@@ -1378,6 +1399,14 @@ async function goHome() {
     hideJoinGroupModal();
     goToPage('page-home');
     renderHomeGroups(user);
+}
+
+function goToGroupOrHome() {
+    if (activeGroupCode && activeGroup) {
+        goToGroup(activeGroupCode);
+    } else {
+        goHome();
+    }
 }
 
 function getGroupIconHtml(group, size = 40) {
@@ -1993,7 +2022,10 @@ function renderGroupVotes() {
     const container = document.getElementById('group-votes');
     container.innerHTML = '';
 
-    const myVotes = Object.values(activeGroup.votes || {}).filter(v => v.participants.includes(session.username));
+    // Filter out event votes - only show group votes
+    const myVotes = Object.values(activeGroup.votes || {}).filter(v => {
+        return !v.eventId && v.participants.includes(session.username);
+    });
 
     if (myVotes.length === 0) {
         container.innerHTML = '<p style="color:#666; font-size:13px; padding:8px 0;">No votes yet.</p>';
@@ -2121,6 +2153,37 @@ async function renderGCOwnerCheckboxes() {
     });
 }
 
+function sortWithExpansions(gameA, gameB, valueFunc) {
+    // Helper function to sort games while keeping expansions grouped with their base games
+    const aIsExp = gameA.itemType === 'expansion' || gameA.itemType === 'boardgameexpansion';
+    const bIsExp = gameB.itemType === 'expansion' || gameB.itemType === 'boardgameexpansion';
+    
+    // If one is expansion and one is base game, check if they're related
+    if (aIsExp && !bIsExp) {
+        // If expansion A is for base game B, A should come after B
+        if (gameA.name.toLowerCase().includes(gameB.name.toLowerCase())) {
+            return 1; // A after B
+        }
+    }
+    if (bIsExp && !aIsExp) {
+        // If expansion B is for base game A, B should come after A
+        if (gameB.name.toLowerCase().includes(gameA.name.toLowerCase())) {
+            return -1; // B after A
+        }
+    }
+    
+    // If both are expansions of the same game or neither is related, sort by value
+    const valA = valueFunc(gameA);
+    const valB = valueFunc(gameB);
+    
+    if (valA === valB) {
+        // If values are equal, sort alphabetically
+        return gameA.name.localeCompare(gameB.name);
+    }
+    
+    return valA - valB;
+}
+
 async function renderGroupCollection() {
     const container = document.getElementById('group-collection-list');
     
@@ -2235,9 +2298,23 @@ async function renderGroupCollection() {
     // Sort based on user preference
     if (sortBy === 'alphabetical') {
         scored.sort((a, b) => a.game.name.localeCompare(b.game.name));
-    } else {
-        // Sort by promotions (default)
+    } else if (sortBy === 'promotions') {
         scored.sort((a, b) => b.score - a.score);
+    } else if (sortBy === 'rating-high') {
+        scored.sort((a, b) => sortWithExpansions(a.game, b.game, (g) => -(g.average || 0)));
+    } else if (sortBy === 'rank') {
+        scored.sort((a, b) => sortWithExpansions(a.game, b.game, (g) => {
+            const rank = parseInt(g.rank) || 999999;
+            return rank;
+        }));
+    } else if (sortBy === 'complexity-high') {
+        scored.sort((a, b) => sortWithExpansions(a.game, b.game, (g) => -(g.complexity || 0)));
+    } else if (sortBy === 'complexity-low') {
+        scored.sort((a, b) => sortWithExpansions(a.game, b.game, (g) => (g.complexity || 0)));
+    } else if (sortBy === 'length-short') {
+        scored.sort((a, b) => sortWithExpansions(a.game, b.game, (g) => (g.playingTime || 0)));
+    } else if (sortBy === 'length-long') {
+        scored.sort((a, b) => sortWithExpansions(a.game, b.game, (g) => -(g.playingTime || 0)));
     }
     
     document.getElementById('group-collection-count-label').textContent = 
@@ -2971,11 +3048,39 @@ async function renderParticipantCards() {
 function syncPC(username, card) {
     const mainCb = document.getElementById('pc-check-' + username);
     const gamesCb = document.getElementById('pc-games-' + username);
-    card.classList.toggle('selected', mainCb.checked);
-    if (gamesCb) {
-        gamesCb.disabled = !mainCb.checked;
-        if (!mainCb.checked) gamesCb.checked = false;
-    }
+    
+    // Allow card to be selected if either participant is checked OR their games are included
+    card.classList.toggle('selected', mainCb.checked || (gamesCb && gamesCb.checked));
+    
+    // Don't disable games checkbox - allow selecting games without selecting participant
+    // if (gamesCb) {
+    //     gamesCb.disabled = !mainCb.checked;
+    //     if (!mainCb.checked) gamesCb.checked = false;
+    // }
+}
+
+function toggleAllGameInclusions() {
+    const includeAll = document.getElementById('include-all-games').checked;
+    
+    // Determine if this is an event vote
+    const isEventVote = currentVote && currentVote.eventId;
+    const memberList = isEventVote 
+        ? (currentEvent ? currentEvent.attendees : [])
+        : (activeGroup ? activeGroup.members : []);
+    
+    memberList.forEach(username => {
+        const gamesCb = document.getElementById('pc-games-' + username);
+        if (gamesCb && !gamesCb.disabled) {
+            gamesCb.checked = includeAll;
+            
+            // Update card appearance
+            const card = document.getElementById('pc-' + username);
+            if (card) {
+                const mainCb = document.getElementById('pc-check-' + username);
+                card.classList.toggle('selected', mainCb.checked || gamesCb.checked);
+            }
+        }
+    });
 }
 
 async function vpContinue() {
@@ -3633,11 +3738,12 @@ function renderGroupEvents() {
         
         const isAttending = event.attendees.includes(session.username);
         const eventName = event.name || formatEventDate(event.date);
+        const totalAttendees = event.attendees.length + (event.plusOnes || []).length;
         
         div.innerHTML = `
             <div>
                 <div class="vc-title">${eventName}</div>
-                <div class="vc-sub">${formatEventDate(event.date)} • ${event.attendees.length} attendee${event.attendees.length !== 1 ? 's' : ''}</div>
+                <div class="vc-sub">${formatEventDate(event.date)} • ${totalAttendees} attendee${totalAttendees !== 1 ? 's' : ''}</div>
             </div>
             <div class="vc-badge ${isAttending ? '' : 'completed'}">${isAttending ? 'Attending' : event.isPublic ? 'Public' : 'Private'}</div>
         `;
@@ -3854,31 +3960,6 @@ async function joinEvent(eventId) {
     showLoading(false);
     
     openEvent(eventId);
-}
-
-async function renderEventAttendees() {
-    const container = document.getElementById('event-attendees-list');
-    container.innerHTML = '<p style="color:#666; font-size:13px; padding:8px 0;">Loading…</p>';
-    
-    const members = await Promise.all(currentEvent.attendees.map(u => fsGetUser(u)));
-    container.innerHTML = '';
-    
-    members.forEach(u => {
-        if (!u) return;
-        const isMe = u.username === session.username;
-        const bringingCount = (currentEvent.attendeeGames[u.username] || []).length;
-        const totalGames = (u.games || []).length;
-        
-        const div = document.createElement('div');
-        div.className = 'list-item';
-        div.innerHTML = `
-            <div class="list-item-left">
-                <div class="item-title">${u.displayName}${isMe ? ' <span style="color:#667eea; font-size:11px; font-weight:600;">YOU</span>' : ''}</div>
-                <div class="item-sub">Bringing ${bringingCount} of ${totalGames} games</div>
-            </div>
-        `;
-        container.appendChild(div);
-    });
 }
 
 function showAddEventAttendees() {
@@ -4397,8 +4478,23 @@ async function renderEventCollection() {
     
     if (sortBy === 'alphabetical') {
         scored.sort((a, b) => a.game.name.localeCompare(b.game.name));
-    } else {
+    } else if (sortBy === 'promotions') {
         scored.sort((a, b) => b.score - a.score);
+    } else if (sortBy === 'rating-high') {
+        scored.sort((a, b) => sortWithExpansions(a.game, b.game, (g) => -(g.average || 0)));
+    } else if (sortBy === 'rank') {
+        scored.sort((a, b) => sortWithExpansions(a.game, b.game, (g) => {
+            const rank = parseInt(g.rank) || 999999;
+            return rank;
+        }));
+    } else if (sortBy === 'complexity-high') {
+        scored.sort((a, b) => sortWithExpansions(a.game, b.game, (g) => -(g.complexity || 0)));
+    } else if (sortBy === 'complexity-low') {
+        scored.sort((a, b) => sortWithExpansions(a.game, b.game, (g) => (g.complexity || 0)));
+    } else if (sortBy === 'length-short') {
+        scored.sort((a, b) => sortWithExpansions(a.game, b.game, (g) => (g.playingTime || 0)));
+    } else if (sortBy === 'length-long') {
+        scored.sort((a, b) => sortWithExpansions(a.game, b.game, (g) => -(g.playingTime || 0)));
     }
     
     document.getElementById('event-collection-count-label').textContent = 
@@ -4631,13 +4727,15 @@ async function renderEventAttendees() {
         if (!u) return;
         const status = attendeeStatuses[u.username] || 'active';
         const hasLeft = status === 'left';
+        const arrivingLate = attendeeStatuses[u.username + '_late'];
         const userScheduledGames = Object.values(scheduledGames).filter(sg => 
             sg.players.includes(u.username) && sg.status !== 'completed'
         );
         const isInGame = userScheduledGames.length > 0;
         
         let sortOrder;
-        if (hasLeft) sortOrder = 3;
+        if (hasLeft) sortOrder = 4;
+        else if (arrivingLate) sortOrder = 3;
         else if (isInGame) sortOrder = 2;
         else sortOrder = 1;
         
@@ -4648,6 +4746,7 @@ async function renderEventAttendees() {
             displayName: u.displayName || u.username,
             sortOrder: sortOrder,
             hasLeft: hasLeft,
+            arrivingLate: arrivingLate,
             isInGame: isInGame,
             scheduledGames: userScheduledGames
         });
@@ -4657,18 +4756,19 @@ async function renderEventAttendees() {
     plusOnes.forEach(po => {
         const status = attendeeStatuses[po.id] || 'active';
         const hasLeft = status === 'left';
+        const arrivingLate = attendeeStatuses[po.id + '_late'];
         const userScheduledGames = Object.values(scheduledGames).filter(sg => 
             sg.players.includes(po.id) && sg.status !== 'completed'
         );
         const isInGame = userScheduledGames.length > 0;
         
         let sortOrder;
-        if (hasLeft) sortOrder = 3;
+        if (hasLeft) sortOrder = 4;
+        else if (arrivingLate) sortOrder = 3;
         else if (isInGame) sortOrder = 2;
         else sortOrder = 1;
         
-        // Use the stored name (which should already be properly formatted)
-        const displayName = po.name;
+        const displayName = po.name || 'Plus One';
         
         allAttendees.push({
             type: 'plusone',
@@ -4677,6 +4777,7 @@ async function renderEventAttendees() {
             displayName: displayName,
             sortOrder: sortOrder,
             hasLeft: hasLeft,
+            arrivingLate: arrivingLate,
             isInGame: isInGame,
             scheduledGames: userScheduledGames
         });
@@ -4701,6 +4802,10 @@ async function renderEventAttendees() {
         if (att.hasLeft) {
             statusText = '<span style="color:#6c757d; font-size:12px;">• Left event</span>';
             statusClass = 'status-left';
+        } else if (att.arrivingLate) {
+            statusText = '<span style="color:#ffc107; font-size:12px;">• Arriving late</span>';
+            statusClass = 'status-late';
+            gameDetails = `<div class="item-sub" style="color:#856404;">Expected: ${att.arrivingLate}</div>`;
         } else if (att.isInGame) {
             statusText = '<span style="color:#28a745; font-size:12px;">• In scheduled game</span>';
             statusClass = 'status-playing';
@@ -4711,15 +4816,23 @@ async function renderEventAttendees() {
             statusClass = 'status-looking';
         }
         
-        // Build title based on type
+        // Build title based on type with improved name formatting
         let title = '';
         if (att.type === 'regular') {
             const bringingCount = (currentEvent.attendeeGames[att.username] || []).length;
             const totalGames = (att.user.games || []).length;
-            title = `${att.displayName} (${att.username})${isMe ? ' <span style="color:#667eea; font-size:11px; font-weight:600;">YOU</span>' : ''} ${statusText}`;
+            title = `<span style="font-size:16px; font-weight:600;">${att.displayName}</span> <span style="font-size:13px; color:#999;">(${att.username})</span>${isMe ? ' <span style="color:#667eea; font-size:11px; font-weight:600;">YOU</span>' : ''} ${statusText}`;
             gameDetails = `<div class="item-sub">Bringing ${bringingCount} of ${totalGames} games</div>${gameDetails}`;
         } else {
-            title = `${att.displayName}${isMyPlusOne ? ' <span style="color:#667eea; font-size:11px; font-weight:600;">YOUR +1</span>' : ''} ${statusText}`;
+            // Plus one formatting
+            const plusOneNum = getPlusOneNumber(att.user);
+            if (att.user.name) {
+                // Has custom name
+                title = `<span style="font-size:16px; font-weight:600;">${att.user.name}</span> <span style="font-size:13px; color:#999;">(${att.user.addedBy} - Plus ${plusOneNum})</span>${isMyPlusOne ? ' <span style="color:#667eea; font-size:11px; font-weight:600;">YOUR +1</span>' : ''} ${statusText}`;
+            } else {
+                // No custom name
+                title = `<span style="font-size:16px; font-weight:600;">Plus One</span> <span style="font-size:13px; color:#999;">(${att.user.addedBy} - Plus ${plusOneNum})</span>${isMyPlusOne ? ' <span style="color:#667eea; font-size:11px; font-weight:600;">YOUR +1</span>' : ''} ${statusText}`;
+            }
         }
         
         // Build action buttons
@@ -4729,15 +4842,27 @@ async function renderEventAttendees() {
             if (att.hasLeft) {
                 actions += `<button class="success" style="padding:5px 10px; font-size:13px; margin:0 4px;" onclick="markReturnedToEvent('${att.username}')">Return to Event</button>`;
                 actions += `<button class="danger" style="padding:5px 10px; font-size:13px; margin:0;" onclick="removeFromEvent('${att.username}')">Remove from Event</button>`;
+            } else if (att.arrivingLate) {
+                actions += `<button class="success" style="padding:5px 10px; font-size:13px; margin:0 4px;" onclick="markArrived('${att.username}')">Mark as Arrived</button>`;
+                actions += `<button class="danger" style="padding:5px 10px; font-size:13px; margin:0;" onclick="removeFromEvent('${att.username}')">Remove from Event</button>`;
             } else {
+                actions += `<button class="secondary" style="padding:5px 10px; font-size:13px; margin:0 4px;" onclick="markArrivingLate('${att.username}')">Mark as Arriving Late</button>`;
                 actions += `<button class="secondary" style="padding:5px 10px; font-size:13px; margin:0;" onclick="markLeftEvent('${att.username}')">Mark as Left</button>`;
+            }
+            
+            // Add remove plus one button for plus ones
+            if (isMyPlusOne) {
+                actions += `<button class="danger" style="padding:5px 10px; font-size:13px; margin-left:4px;" onclick="removePlusOne('${att.username}')">Remove Plus One</button>`;
             }
         }
         
         if (isEventAdmin && !isMe && !isMyPlusOne) {
             if (att.hasLeft) {
                 actions += `<button class="success" style="padding:5px 10px; font-size:13px; margin:0 4px;" onclick="markReturnedToEvent('${att.username}')">Mark Returned</button>`;
+            } else if (att.arrivingLate) {
+                actions += `<button class="success" style="padding:5px 10px; font-size:13px; margin:0 4px;" onclick="markArrived('${att.username}')">Mark Arrived</button>`;
             } else {
+                actions += `<button class="secondary" style="padding:5px 10px; font-size:13px; margin:0 4px;" onclick="markArrivingLate('${att.username}')">Mark as Arriving Late</button>`;
                 actions += `<button class="secondary" style="padding:5px 10px; font-size:13px; margin:0 4px;" onclick="markLeftEvent('${att.username}')">Mark Left</button>`;
             }
             actions += `<button class="danger" style="padding:5px 10px; font-size:13px; margin:0;" onclick="removeFromEvent('${att.username}')">Remove</button>`;
@@ -4768,6 +4893,47 @@ function isUserEventAdmin(username) {
     }
     
     return false;
+}
+
+function getPlusOneNumber(plusOne) {
+    // Calculate which number plus one this is for the user
+    const plusOnes = currentEvent.plusOnes || [];
+    const userPlusOnes = plusOnes.filter(po => po.addedBy === plusOne.addedBy);
+    const index = userPlusOnes.findIndex(po => po.id === plusOne.id);
+    return index + 1;
+}
+
+async function markArrivingLate(username) {
+    const time = prompt('What time do you expect to arrive? (e.g., 8:30 PM)');
+    if (!time) return;
+    
+    showLoading(true);
+    
+    if (!currentEvent.attendeeStatuses) {
+        currentEvent.attendeeStatuses = {};
+    }
+    currentEvent.attendeeStatuses[username] = 'late';
+    currentEvent.attendeeStatuses[username + '_late'] = time;
+    
+    await fsSaveGroup(activeGroup);
+    showLoading(false);
+    
+    await renderEventAttendees();
+}
+
+async function markArrived(username) {
+    showLoading(true);
+    
+    if (!currentEvent.attendeeStatuses) {
+        currentEvent.attendeeStatuses = {};
+    }
+    currentEvent.attendeeStatuses[username] = 'active';
+    delete currentEvent.attendeeStatuses[username + '_late'];
+    
+    await fsSaveGroup(activeGroup);
+    showLoading(false);
+    
+    await renderEventAttendees();
 }
 
 async function markLeftEvent(username) {
@@ -4886,33 +5052,11 @@ async function addPlusOneSubmit() {
         currentEvent.plusOnes = [];
     }
     
-    // Get current user's display name
-    const user = await fsGetUser(session.username);
-    const userDisplayName = user.displayName || session.username;
-    
-    let displayName;
-    if (name) {
-        // User provided a custom name
-        displayName = `${userDisplayName} (${session.username}) - ${name}`;
-    } else {
-        // Auto-generate Plus 1, Plus 2, etc.
-        let plusNumber = 1;
-        let proposedName = `${userDisplayName} (${session.username}) - Plus ${plusNumber}`;
-        
-        // Check if this name already exists, if so increment
-        while (currentEvent.plusOnes.some(po => po.name === proposedName || (!po.name && po.addedBy === session.username && po.autoNumber === plusNumber))) {
-            plusNumber++;
-            proposedName = `${userDisplayName} (${session.username}) - Plus ${plusNumber}`;
-        }
-        
-        displayName = proposedName;
-    }
-    
     const plusOneId = 'plusone_' + session.username + '_' + Date.now().toString(36);
     
     currentEvent.plusOnes.push({
         id: plusOneId,
-        name: displayName,
+        name: name || '', // Store empty string if no name, will display as "Plus One"
         addedBy: session.username,
         addedAt: new Date().toISOString()
     });
@@ -4922,6 +5066,40 @@ async function addPlusOneSubmit() {
     
     hideAddPlusOne();
     await renderEventAttendees();
+}
+
+async function removePlusOne(plusOneId) {
+    if (!confirm('Remove this plus one from the event?')) return;
+    
+    showLoading(true);
+    
+    const plusOnes = currentEvent.plusOnes || [];
+    const idx = plusOnes.findIndex(po => po.id === plusOneId);
+    if (idx > -1) {
+        plusOnes.splice(idx, 1);
+    }
+    
+    // Remove from statuses
+    if (currentEvent.attendeeStatuses) {
+        delete currentEvent.attendeeStatuses[plusOneId];
+        delete currentEvent.attendeeStatuses[plusOneId + '_late'];
+    }
+    
+    // Remove from all scheduled games
+    if (currentEvent.scheduledGames) {
+        Object.values(currentEvent.scheduledGames).forEach(sg => {
+            const playerIdx = sg.players.indexOf(plusOneId);
+            if (playerIdx > -1) {
+                sg.players.splice(playerIdx, 1);
+            }
+        });
+    }
+    
+    await fsSaveGroup(activeGroup);
+    showLoading(false);
+    
+    await renderEventAttendees();
+    renderScheduledGames();
 }
 
 // Helper function to get display name for any participant (user or plus one)
@@ -4991,9 +5169,8 @@ async function renderScheduledGames() {
             </div>
             <div style="margin-top:10px; display:flex; gap:6px; flex-wrap:wrap;">
                 ${isOpen && !isPlayer && !hasMyPlusOnes ? `<button class="success" style="padding:5px 10px; font-size:13px; margin:0;" onclick="joinScheduledGame('${sg.id}')">Join Game</button>` : ''}
-                ${isOpen && !isPlayer && !hasMyPlusOnes ? `<button class="success" style="padding:5px 10px; font-size:13px; margin:0;" onclick="showAddPlusOneToGame('${sg.id}')">Add Plus One</button>` : ''}
                 ${isPlayer ? `<button class="secondary" style="padding:5px 10px; font-size:13px; margin:0;" onclick="leaveScheduledGame('${sg.id}')">Leave Game</button>` : ''}
-                ${isPlayer && isOpen ? `<button style="padding:5px 10px; font-size:13px; margin:0;" onclick="showAddPlusOneToGame('${sg.id}')">Add Plus One</button>` : ''}
+                ${hasMyPlusOnes ? `<button class="secondary" style="padding:5px 10px; font-size:13px; margin:0;" onclick="removePlusOneFromGame('${sg.id}')">Remove Plus One</button>` : ''}
                 ${isPlayer && isOpen ? `<button style="padding:5px 10px; font-size:13px; margin:0;" onclick="closeScheduledGame('${sg.id}')">Close to Others</button>` : ''}
                 ${isPlayer || hasMyPlusOnes ? `<button class="success" style="padding:5px 10px; font-size:13px; margin:0;" onclick="markGameComplete('${sg.id}')">Mark Complete</button>` : ''}
                 ${isPlayer || hasMyPlusOnes ? `<button class="danger" style="padding:5px 10px; font-size:13px; margin:0;" onclick="deleteScheduledGame('${sg.id}')">Delete</button>` : ''}
@@ -5085,9 +5262,14 @@ async function showAddPlusOneToGame(gameId) {
 async function leaveScheduledGame(gameId) {
     if (!confirm('Leave this scheduled game?')) return;
     
+    const sg = currentEvent.scheduledGames[gameId];
+    const playerCountBefore = sg.players.length;
+    
+    // Ask if should open a slot
+    const openSlot = confirm('Should this game be marked as open for one additional player?');
+    
     showLoading(true);
     
-    const sg = currentEvent.scheduledGames[gameId];
     const idx = sg.players.indexOf(session.username);
     if (idx > -1) {
         sg.players.splice(idx, 1);
@@ -5096,6 +5278,61 @@ async function leaveScheduledGame(gameId) {
     // If no players left, delete the game
     if (sg.players.length === 0) {
         delete currentEvent.scheduledGames[gameId];
+    } else if (openSlot) {
+        // Open to others
+        sg.openToOthers = true;
+        if (!sg.maxPlayers) {
+            sg.maxPlayers = playerCountBefore; // Keep same max as before leaving
+        }
+        // If was already open, maxPlayers stays same (effectively +1 slot)
+    }
+    
+    await fsSaveGroup(activeGroup);
+    showLoading(false);
+    
+    renderScheduledGames();
+    await renderEventAttendees();
+}
+
+async function removePlusOneFromGame(gameId) {
+    const sg = currentEvent.scheduledGames[gameId];
+    const plusOnes = currentEvent.plusOnes || [];
+    const myPlusOnes = plusOnes.filter(po => po.addedBy === session.username);
+    const myPlusOnesInGame = myPlusOnes.filter(po => sg.players.includes(po.id));
+    
+    if (myPlusOnesInGame.length === 0) return;
+    
+    let plusOneToRemove;
+    if (myPlusOnesInGame.length === 1) {
+        plusOneToRemove = myPlusOnesInGame[0];
+    } else {
+        // Multiple plus ones, ask which one
+        const names = myPlusOnesInGame.map((po, i) => `${i + 1}. ${po.name || 'Plus One'}`).join('\n');
+        const choice = prompt(`Which plus one do you want to remove?\n${names}\n\nEnter the number:`);
+        const index = parseInt(choice) - 1;
+        if (isNaN(index) || index < 0 || index >= myPlusOnesInGame.length) return;
+        plusOneToRemove = myPlusOnesInGame[index];
+    }
+    
+    if (!confirm(`Remove ${plusOneToRemove.name || 'Plus One'} from this game?`)) return;
+    
+    const playerCountBefore = sg.players.length;
+    const openSlot = confirm('Should this game be marked as open for one additional player?');
+    
+    showLoading(true);
+    
+    const idx = sg.players.indexOf(plusOneToRemove.id);
+    if (idx > -1) {
+        sg.players.splice(idx, 1);
+    }
+    
+    if (sg.players.length === 0) {
+        delete currentEvent.scheduledGames[gameId];
+    } else if (openSlot) {
+        sg.openToOthers = true;
+        if (!sg.maxPlayers) {
+            sg.maxPlayers = playerCountBefore;
+        }
     }
     
     await fsSaveGroup(activeGroup);
@@ -5467,11 +5704,12 @@ async function viewPastEvents() {
         div.onclick = () => openEvent(event.id);
         
         const eventName = event.name || formatEventDate(event.date);
+        const totalAttendees = event.attendees.length + (event.plusOnes || []).length;
         
         div.innerHTML = `
             <div>
                 <div class="vc-title">${eventName}</div>
-                <div class="vc-sub">${formatEventDate(event.date)} • ${event.attendees.length} attendee${event.attendees.length !== 1 ? 's' : ''}</div>
+                <div class="vc-sub">${formatEventDate(event.date)} • ${totalAttendees} attendee${totalAttendees !== 1 ? 's' : ''}</div>
             </div>
             <div class="vc-badge completed">Past</div>
         `;
