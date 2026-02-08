@@ -81,6 +81,9 @@ button.ghost:hover { background:#667eea; color:white; }
     margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;
 }
 .list-item:hover { background:#f0f1f3; }
+.list-item.status-looking { background:#e7f3ff; border-left:4px solid #667eea; }
+.list-item.status-playing { background:#e8f5e9; border-left:4px solid #28a745; }
+.list-item.status-left { background:#e0e0e0; opacity:0.7; border-left:4px solid #6c757d; }
 .list-item-left { flex:1; }
 .list-item-left .item-title { font-weight:600; color:#333; }
 .list-item-left .item-sub { font-size:13px; color:#666; margin-top:2px; }
@@ -653,7 +656,10 @@ button.ghost:hover { background:#667eea; color:white; }
     
     <h3>Event Attendees</h3>
     <div id="event-attendees-list"></div>
-    <button onclick="showAddEventAttendees()" style="margin-top:10px;">Add Attendees</button>
+    <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
+      <button onclick="showAddEventAttendees()">Add Group Members</button>
+      <button onclick="showAddPlusOne()">Add Plus One</button>
+    </div>
     
     <div id="add-event-attendees-panel" style="display:none; margin-top:16px; padding-top:16px; border-top:2px solid #e0e0e0;">
       <h4>Add Attendees from Group</h4>
@@ -662,16 +668,27 @@ button.ghost:hover { background:#667eea; color:white; }
       <button class="secondary" onclick="hideAddEventAttendees()">Cancel</button>
     </div>
     
+    <div id="add-plus-one-panel" style="display:none; margin-top:16px; padding:16px; background:#f8f9fa; border-radius:8px;">
+      <h4>Add Plus One</h4>
+      <label for="plus-one-name">Name (optional)</label>
+      <input type="text" id="plus-one-name" placeholder="e.g. Sarah">
+      <p style="font-size:13px; color:#666; margin-bottom:16px;">If no name provided, will show as "Plus One for [Your Name]"</p>
+      <button onclick="addPlusOneSubmit()">Add Plus One</button>
+      <button class="secondary" onclick="hideAddPlusOne()">Cancel</button>
+    </div>
+    
     <div class="section">
       <h3>Event Collection</h3>
       <p style="font-size:14px; color:#555; margin-bottom:12px; line-height:1.5;">Manage which games attendees are bringing and vote on games to play. Each attendee can select which games from their collection they're bringing to the event.</p>
       <button onclick="viewEventCollection()">View Event Collection</button>
+      <button onclick="manageMyEventGames()">Manage My Games</button>
     </div>
     
     <div class="section">
       <h3>Scheduled Games</h3>
       <p style="font-size:14px; color:#555; margin-bottom:12px; line-height:1.5;">Games that have been confirmed and scheduled with specific players.</p>
       <div id="scheduled-games-list"></div>
+      <button class="secondary" onclick="viewPlayedGames()" style="margin-top:10px;">See Played Games</button>
     </div>
     
     <div class="section">
@@ -820,6 +837,23 @@ button.ghost:hover { background:#667eea; color:white; }
     <h2>Past Events</h2>
     <div id="past-events-list"></div>
     <button class="secondary" onclick="goBackToGroup()">Back to Group</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     PAGE: PLAYED GAMES (for events)
+     ════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-played-games">
+  <div class="card">
+    <div class="topbar">
+      <span id="played-games-icon" class="logo" onclick="goHome()">🎲</span>
+      <button class="secondary" onclick="doLogout()">Log Out</button>
+    </div>
+    
+    <h2>Played Games</h2>
+    <p class="subtitle">Games that have been completed during this event.</p>
+    <div id="played-games-list"></div>
+    <button class="secondary" onclick="goBackToEvent()">Back to Event</button>
   </div>
 </div>
 
@@ -3971,6 +4005,22 @@ async function startNewEventVote() {
         return;
     }
     
+    // Check if user has left the event
+    const attendeeStatuses = currentEvent.attendeeStatuses || {};
+    const myStatus = attendeeStatuses[session.username] || 'active';
+    
+    if (myStatus === 'left') {
+        if (confirm('You are marked as having left this event. Would you like to return to the event to start a vote?')) {
+            showLoading(true);
+            currentEvent.attendeeStatuses[session.username] = 'active';
+            await fsSaveGroup(activeGroup);
+            showLoading(false);
+            await renderEventAttendees();
+        } else {
+            return;
+        }
+    }
+    
     currentVote = {
         id: generateVoteId(),
         eventId: currentEvent.id,
@@ -3995,8 +4045,17 @@ async function renderEventVoteParticipants() {
     const container = document.getElementById('vp-cards');
     container.innerHTML = '';
     
-    const members = await Promise.all(currentEvent.attendees.map(username => fsGetUser(username)));
+    const attendeeStatuses = currentEvent.attendeeStatuses || {};
     
+    // Get regular attendees who haven't left
+    const activeAttendees = currentEvent.attendees.filter(username => {
+        const status = attendeeStatuses[username] || 'active';
+        return status !== 'left';
+    });
+    
+    const members = await Promise.all(activeAttendees.map(username => fsGetUser(username)));
+    
+    // Add regular attendees
     members.forEach(u => {
         if (!u) return;
         const username = u.username;
@@ -4026,6 +4085,38 @@ async function renderEventVoteParticipants() {
             if (e.target.closest('label') || e.target.type === 'checkbox') return;
             mainCb.checked = !mainCb.checked;
             syncPC(username, div);
+        });
+        
+        container.appendChild(div);
+    });
+    
+    // Add plus ones who haven't left
+    const plusOnes = currentEvent.plusOnes || [];
+    plusOnes.forEach(po => {
+        const status = attendeeStatuses[po.id] || 'active';
+        if (status === 'left') return;
+        
+        const displayName = po.name || `Plus One for ${po.addedBy}`;
+        
+        const div = document.createElement('div');
+        div.className = 'participant-card';
+        div.id = 'pc-' + po.id;
+        div.innerHTML = `
+            <div class="pc-row">
+                <input type="checkbox" id="pc-check-${po.id}">
+                <label for="pc-check-${po.id}" style="font-weight:600; color:#333;">${displayName}</label>
+            </div>
+            <div class="pc-sub">Plus One (no games)</div>
+        `;
+        
+        const mainCb = div.querySelector('#pc-check-' + po.id);
+        mainCb.addEventListener('change', () => {
+            div.classList.toggle('selected', mainCb.checked);
+        });
+        div.addEventListener('click', (e) => {
+            if (e.target.closest('label') || e.target.type === 'checkbox') return;
+            mainCb.checked = !mainCb.checked;
+            div.classList.toggle('selected', mainCb.checked);
         });
         
         container.appendChild(div);
@@ -4462,74 +4553,183 @@ async function renderEventAttendees() {
     const container = document.getElementById('event-attendees-list');
     container.innerHTML = '<p style="color:#666; font-size:13px; padding:8px 0;">Loading…</p>';
     
-    const members = await Promise.all(currentEvent.attendees.map(u => fsGetUser(u)));
-    container.innerHTML = '';
+    // Get all attendees including plus ones
+    const regularAttendees = await Promise.all(currentEvent.attendees.map(u => fsGetUser(u)));
+    const plusOnes = currentEvent.plusOnes || [];
     
     // Get attendee statuses
     const attendeeStatuses = currentEvent.attendeeStatuses || {};
     const scheduledGames = currentEvent.scheduledGames || {};
     
-    members.forEach(u => {
+    // Determine if current user is event admin
+    const isEventAdmin = isUserEventAdmin(session.username);
+    
+    // Create array of all attendees with their status
+    const allAttendees = [];
+    
+    // Add regular attendees
+    regularAttendees.forEach(u => {
         if (!u) return;
-        const isMe = u.username === session.username;
-        const bringingCount = (currentEvent.attendeeGames[u.username] || []).length;
-        const totalGames = (u.games || []).length;
-        
-        // Determine status
         const status = attendeeStatuses[u.username] || 'active';
         const hasLeft = status === 'left';
-        
-        // Check if user is in a scheduled game
         const userScheduledGames = Object.values(scheduledGames).filter(sg => 
             sg.players.includes(u.username) && sg.status !== 'completed'
         );
         const isInGame = userScheduledGames.length > 0;
         
+        let sortOrder;
+        if (hasLeft) sortOrder = 3;
+        else if (isInGame) sortOrder = 2;
+        else sortOrder = 1;
+        
+        allAttendees.push({
+            type: 'regular',
+            user: u,
+            username: u.username,
+            displayName: u.displayName || u.username,
+            sortOrder: sortOrder,
+            hasLeft: hasLeft,
+            isInGame: isInGame,
+            scheduledGames: userScheduledGames
+        });
+    });
+    
+    // Add plus ones
+    plusOnes.forEach(po => {
+        const status = attendeeStatuses[po.id] || 'active';
+        const hasLeft = status === 'left';
+        const userScheduledGames = Object.values(scheduledGames).filter(sg => 
+            sg.players.includes(po.id) && sg.status !== 'completed'
+        );
+        const isInGame = userScheduledGames.length > 0;
+        
+        let sortOrder;
+        if (hasLeft) sortOrder = 3;
+        else if (isInGame) sortOrder = 2;
+        else sortOrder = 1;
+        
+        const displayName = po.name || `Plus One for ${po.addedBy}`;
+        
+        allAttendees.push({
+            type: 'plusone',
+            user: po,
+            username: po.id,
+            displayName: displayName,
+            sortOrder: sortOrder,
+            hasLeft: hasLeft,
+            isInGame: isInGame,
+            scheduledGames: userScheduledGames
+        });
+    });
+    
+    // Sort: first by status (looking=1, playing=2, left=3), then alphabetically by display name
+    allAttendees.sort((a, b) => {
+        if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
+        return a.displayName.localeCompare(b.displayName);
+    });
+    
+    container.innerHTML = '';
+    
+    allAttendees.forEach(att => {
+        const isMe = att.type === 'regular' && att.username === session.username;
+        const isMyPlusOne = att.type === 'plusone' && att.user.addedBy === session.username;
+        
         let statusText = '';
         let gameDetails = '';
+        let statusClass = 'status-looking';
         
-        if (hasLeft) {
-            statusText = '<span style="color:#999; font-size:12px;">• Left event</span>';
-        } else if (isInGame) {
+        if (att.hasLeft) {
+            statusText = '<span style="color:#6c757d; font-size:12px;">• Left event</span>';
+            statusClass = 'status-left';
+        } else if (att.isInGame) {
             statusText = '<span style="color:#28a745; font-size:12px;">• In scheduled game</span>';
-            // Show which game(s)
-            const gameNames = userScheduledGames.map(sg => sg.game.name).join(', ');
+            statusClass = 'status-playing';
+            const gameNames = att.scheduledGames.map(sg => sg.game.name).join(', ');
             gameDetails = `<div class="item-sub" style="color:#28a745;">Playing: ${gameNames}</div>`;
         } else {
             statusText = '<span style="color:#667eea; font-size:12px;">• Looking for game</span>';
+            statusClass = 'status-looking';
+        }
+        
+        // Build title based on type
+        let title = '';
+        if (att.type === 'regular') {
+            const bringingCount = (currentEvent.attendeeGames[att.username] || []).length;
+            const totalGames = (att.user.games || []).length;
+            title = `${att.displayName} (${att.username})${isMe ? ' <span style="color:#667eea; font-size:11px; font-weight:600;">YOU</span>' : ''} ${statusText}`;
+            gameDetails = `<div class="item-sub">Bringing ${bringingCount} of ${totalGames} games</div>${gameDetails}`;
+        } else {
+            title = `${att.displayName}${isMyPlusOne ? ' <span style="color:#667eea; font-size:11px; font-weight:600;">YOUR +1</span>' : ''} ${statusText}`;
+        }
+        
+        // Build action buttons
+        let actions = '';
+        
+        if (isMe || isMyPlusOne) {
+            if (att.hasLeft) {
+                actions += `<button class="success" style="padding:5px 10px; font-size:13px; margin:0 4px;" onclick="markReturnedToEvent('${att.username}')">Return to Event</button>`;
+                actions += `<button class="danger" style="padding:5px 10px; font-size:13px; margin:0;" onclick="removeFromEvent('${att.username}')">Remove from Event</button>`;
+            } else {
+                actions += `<button class="secondary" style="padding:5px 10px; font-size:13px; margin:0;" onclick="markLeftEvent('${att.username}')">Mark as Left</button>`;
+            }
+        }
+        
+        if (isEventAdmin && !isMe && !isMyPlusOne) {
+            if (att.hasLeft) {
+                actions += `<button class="success" style="padding:5px 10px; font-size:13px; margin:0 4px;" onclick="markReturnedToEvent('${att.username}')">Mark Returned</button>`;
+            } else {
+                actions += `<button class="secondary" style="padding:5px 10px; font-size:13px; margin:0 4px;" onclick="markLeftEvent('${att.username}')">Mark Left</button>`;
+            }
+            actions += `<button class="danger" style="padding:5px 10px; font-size:13px; margin:0;" onclick="removeFromEvent('${att.username}')">Remove</button>`;
         }
         
         const div = document.createElement('div');
-        div.className = 'list-item';
+        div.className = 'list-item ' + statusClass;
         div.innerHTML = `
             <div class="list-item-left">
-                <div class="item-title">${u.displayName} (${u.username})${isMe ? ' <span style="color:#667eea; font-size:11px; font-weight:600;">YOU</span>' : ''} ${statusText}</div>
-                <div class="item-sub">Bringing ${bringingCount} of ${totalGames} games</div>
+                <div class="item-title">${title}</div>
                 ${gameDetails}
             </div>
-            ${isMe && !hasLeft ? `<button class="secondary" style="padding:5px 10px; font-size:13px; margin:0;" onclick="markLeftEvent()">Mark as Left</button>` : ''}
+            ${actions ? `<div style="display:flex; gap:4px;">${actions}</div>` : ''}
         `;
         container.appendChild(div);
     });
 }
 
-async function markLeftEvent() {
-    if (!confirm('Mark yourself as having left this event? This will remove you from any scheduled games.')) {
-        return;
+function isUserEventAdmin(username) {
+    if (!currentEvent) return false;
+    
+    // Event creator is always admin
+    if (currentEvent.createdBy === username) return true;
+    
+    // Group admins who are attending are also event admins
+    if (activeGroup.groupAdmins && activeGroup.groupAdmins.includes(username)) {
+        if (currentEvent.attendees.includes(username)) return true;
     }
+    
+    return false;
+}
+
+async function markLeftEvent(username) {
+    const isMe = username === session.username;
+    const confirmMsg = isMe 
+        ? 'Mark yourself as having left this event? This will remove you from any scheduled games.'
+        : 'Mark this attendee as having left the event?';
+    
+    if (!confirm(confirmMsg)) return;
     
     showLoading(true);
     
     if (!currentEvent.attendeeStatuses) {
         currentEvent.attendeeStatuses = {};
     }
-    currentEvent.attendeeStatuses[session.username] = 'left';
+    currentEvent.attendeeStatuses[username] = 'left';
     
     // Remove from all active scheduled games
     if (currentEvent.scheduledGames) {
         Object.values(currentEvent.scheduledGames).forEach(sg => {
             if (sg.status !== 'completed') {
-                const idx = sg.players.indexOf(session.username);
+                const idx = sg.players.indexOf(username);
                 if (idx > -1) {
                     sg.players.splice(idx, 1);
                 }
@@ -4542,6 +4742,104 @@ async function markLeftEvent() {
     
     await renderEventAttendees();
     renderScheduledGames();
+}
+
+async function markReturnedToEvent(username) {
+    showLoading(true);
+    
+    if (!currentEvent.attendeeStatuses) {
+        currentEvent.attendeeStatuses = {};
+    }
+    currentEvent.attendeeStatuses[username] = 'active';
+    
+    await fsSaveGroup(activeGroup);
+    showLoading(false);
+    
+    await renderEventAttendees();
+}
+
+async function removeFromEvent(username) {
+    const confirmMsg = 'Remove this attendee from the event completely? This cannot be undone.';
+    
+    if (!confirm(confirmMsg)) return;
+    
+    showLoading(true);
+    
+    // Check if it's a plus one or regular attendee
+    const plusOnes = currentEvent.plusOnes || [];
+    const plusOneIndex = plusOnes.findIndex(po => po.id === username);
+    
+    if (plusOneIndex > -1) {
+        // Remove plus one
+        plusOnes.splice(plusOneIndex, 1);
+    } else {
+        // Remove regular attendee
+        const idx = currentEvent.attendees.indexOf(username);
+        if (idx > -1) {
+            currentEvent.attendees.splice(idx, 1);
+        }
+        
+        // Remove from attendee games
+        if (currentEvent.attendeeGames && currentEvent.attendeeGames[username]) {
+            delete currentEvent.attendeeGames[username];
+        }
+    }
+    
+    // Remove from statuses
+    if (currentEvent.attendeeStatuses && currentEvent.attendeeStatuses[username]) {
+        delete currentEvent.attendeeStatuses[username];
+    }
+    
+    // Remove from all scheduled games
+    if (currentEvent.scheduledGames) {
+        Object.values(currentEvent.scheduledGames).forEach(sg => {
+            const idx = sg.players.indexOf(username);
+            if (idx > -1) {
+                sg.players.splice(idx, 1);
+            }
+        });
+    }
+    
+    await fsSaveGroup(activeGroup);
+    showLoading(false);
+    
+    await renderEventAttendees();
+    renderScheduledGames();
+}
+
+function showAddPlusOne() {
+    document.getElementById('add-plus-one-panel').style.display = 'block';
+    hideAddEventAttendees();
+}
+
+function hideAddPlusOne() {
+    document.getElementById('add-plus-one-panel').style.display = 'none';
+    document.getElementById('plus-one-name').value = '';
+}
+
+async function addPlusOneSubmit() {
+    const name = document.getElementById('plus-one-name').value.trim();
+    
+    showLoading(true);
+    
+    if (!currentEvent.plusOnes) {
+        currentEvent.plusOnes = [];
+    }
+    
+    const plusOneId = 'plusone_' + session.username + '_' + Date.now().toString(36);
+    
+    currentEvent.plusOnes.push({
+        id: plusOneId,
+        name: name,
+        addedBy: session.username,
+        addedAt: new Date().toISOString()
+    });
+    
+    await fsSaveGroup(activeGroup);
+    showLoading(false);
+    
+    hideAddPlusOne();
+    await renderEventAttendees();
 }
 
 function renderScheduledGames() {
@@ -4896,6 +5194,61 @@ function goBackToEventVoteResult() {
     
     renderResultPage(game, currentVote, tiedCount);
     goToPage('page-vote-result');
+}
+
+async function viewPlayedGames() {
+    showLoading(true);
+    activeGroup = await fsGetGroup(activeGroupCode);
+    currentEvent = activeGroup.events[currentEvent.id];
+    
+    // Set group icon
+    const iconEl = document.getElementById('played-games-icon');
+    if (activeGroup.groupPhoto) {
+        iconEl.innerHTML = `<img src="${activeGroup.groupPhoto}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;" alt="Group">`;
+        iconEl.className = '';
+    } else {
+        iconEl.textContent = '🎲';
+        iconEl.className = 'logo';
+    }
+    
+    const container = document.getElementById('played-games-list');
+    container.innerHTML = '';
+    
+    const scheduledGames = currentEvent.scheduledGames || {};
+    const completedGames = Object.values(scheduledGames).filter(sg => sg.status === 'completed');
+    
+    if (completedGames.length === 0) {
+        container.innerHTML = '<p style="color:#666; font-size:13px; padding:8px 0;">No completed games yet.</p>';
+        showLoading(false);
+        goToPage('page-played-games');
+        return;
+    }
+    
+    // Sort by completion time (most recent first)
+    completedGames.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    
+    completedGames.forEach(sg => {
+        const game = sg.game;
+        const players = sg.players;
+        
+        const div = document.createElement('div');
+        div.className = 'list-item';
+        div.style.flexDirection = 'column';
+        div.style.alignItems = 'flex-start';
+        
+        div.innerHTML = `
+            <div style="width:100%;">
+                <div class="item-title">${game.name}</div>
+                <div class="item-sub">${game.minPlayers}–${game.maxPlayers} players • ${game.playingTime} min</div>
+                <div style="font-size:13px; color:#667eea; margin-top:4px;">Players: ${players.join(', ')}</div>
+                <div style="font-size:12px; color:#999; margin-top:2px;">Completed: ${new Date(sg.createdAt).toLocaleDateString()}</div>
+            </div>
+        `;
+        container.appendChild(div);
+    });
+    
+    showLoading(false);
+    goToPage('page-played-games');
 }
 
 // ════════════════════════════════════════════════════════════════════
