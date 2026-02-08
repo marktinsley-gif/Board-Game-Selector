@@ -1256,7 +1256,20 @@ function goToPage(id, skipHistory) {
     if (!skipHistory) {
         history.pushState({ page: id }, '', '#' + id);
     }
+    
+    // Save current state for page refresh
+    saveAppState(id);
 }
+
+function saveAppState(pageName) {
+    const state = {
+        page: pageName,
+        activeGroupCode: activeGroupCode || null,
+        currentEventId: currentEvent ? currentEvent.id : null
+    };
+    sessionStorage.setItem('appState', JSON.stringify(state));
+}
+
 function showAlert(id, msg) {
     const el = document.getElementById(id);
     el.textContent = msg; el.style.display = 'block';
@@ -2988,7 +3001,7 @@ async function renderParticipantCards() {
             </div>
             <div class="pc-sub">${hasGames ? games.length + ' games' : 'No collection'}</div>
             ${hasGames ? `<div class="pc-row" style="margin-top:8px;">
-                <input type="checkbox" id="pc-games-${username}" disabled>
+                <input type="checkbox" id="pc-games-${username}">
                 <label for="pc-games-${username}">Include their games</label>
             </div>` : ''}
         `;
@@ -2996,7 +3009,10 @@ async function renderParticipantCards() {
         const mainCb = div.querySelector('#pc-check-' + username);
         const gamesCb = div.querySelector('#pc-games-' + username);
         mainCb.addEventListener('change', () => syncPC(username, div));
-        if (gamesCb) gamesCb.addEventListener('click', e => e.stopPropagation());
+        if (gamesCb) {
+            gamesCb.addEventListener('change', () => syncPC(username, div));
+            gamesCb.addEventListener('click', e => e.stopPropagation());
+        }
         div.addEventListener('click', (e) => {
             if (e.target.closest('label') || e.target.type === 'checkbox') return;
             mainCb.checked = !mainCb.checked;
@@ -4192,7 +4208,7 @@ async function renderEventVoteParticipants() {
             </div>
             <div class="pc-sub">${hasGames ? eventGameIds.length + ' games (for event)' : 'No games selected'}</div>
             ${hasGames ? `<div class="pc-row" style="margin-top:8px;">
-                <input type="checkbox" id="pc-games-${username}" disabled>
+                <input type="checkbox" id="pc-games-${username}">
                 <label for="pc-games-${username}">Include their games</label>
             </div>` : ''}
         `;
@@ -4200,7 +4216,10 @@ async function renderEventVoteParticipants() {
         const mainCb = div.querySelector('#pc-check-' + username);
         const gamesCb = div.querySelector('#pc-games-' + username);
         mainCb.addEventListener('change', () => syncPC(username, div));
-        if (gamesCb) gamesCb.addEventListener('click', e => e.stopPropagation());
+        if (gamesCb) {
+            gamesCb.addEventListener('change', () => syncPC(username, div));
+            gamesCb.addEventListener('click', e => e.stopPropagation());
+        }
         div.addEventListener('click', (e) => {
             if (e.target.closest('label') || e.target.type === 'checkbox') return;
             mainCb.checked = !mainCb.checked;
@@ -5830,9 +5849,45 @@ class DualRange {
         }
     });
 
-    // Route based on session
+    // Route based on session and saved state
     if (session && session.username) {
-        goHome();
+        // Try to restore previous state from sessionStorage
+        const savedState = sessionStorage.getItem('appState');
+        if (savedState) {
+            try {
+                const state = JSON.parse(savedState);
+                
+                // Restore group context if available
+                if (state.activeGroupCode) {
+                    activeGroupCode = state.activeGroupCode;
+                    // Load and navigate to the saved page
+                    (async () => {
+                        activeGroup = await fsGetGroup(activeGroupCode);
+                        if (activeGroup) {
+                            if (state.currentEventId) {
+                                currentEvent = activeGroup.events[state.currentEventId];
+                            }
+                            
+                            // Navigate to the saved page
+                            if (state.page) {
+                                goToPage(state.page);
+                            } else {
+                                goToGroup(activeGroupCode);
+                            }
+                        } else {
+                            goHome();
+                        }
+                    })();
+                } else {
+                    goHome();
+                }
+            } catch (e) {
+                console.error('Error restoring state:', e);
+                goHome();
+            }
+        } else {
+            goHome();
+        }
     } else {
         goToPage('page-login');
     }
