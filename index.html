@@ -416,7 +416,7 @@ button.ghost:hover { background:#667eea; color:white; }
         <span id="group-header-name" style="font-weight:700; color:#333; font-size:18px;"></span>
       </div>
       <div style="display:flex; gap:8px;">
-        <button class="secondary" onclick="goToGroupOrHome()">Back to Home</button>
+        <button class="secondary" onclick="goHome()">Back to Home</button>
         <button class="secondary" onclick="doLogout()">Log Out</button>
       </div>
     </div>
@@ -457,7 +457,7 @@ button.ghost:hover { background:#667eea; color:white; }
     </div>
 
     <div class="section">
-      <button onclick="goToGroupOrHome()">🏠 Back to Home</button>
+      <button onclick="goHome()">🏠 Back to Home</button>
       <button id="admin-details-btn" onclick="viewGroupDetails()" style="display:none;">Admin Details</button>
       <button class="secondary" onclick="doLeaveGroup()">Leave This Group</button>
     </div>
@@ -657,8 +657,14 @@ button.ghost:hover { background:#667eea; color:white; }
 <div class="page" id="page-event-details">
   <div class="card">
     <div class="topbar">
-      <span id="event-details-icon" class="logo" onclick="goToGroupOrHome()">🎲</span>
-      <button class="secondary" onclick="doLogout()">Log Out</button>
+      <div class="topbar-left">
+        <span id="event-details-icon" class="logo" onclick="goToGroupOrHome()">🎲</span>
+        <span id="event-group-name" style="font-weight:700; color:#333; font-size:18px;"></span>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="secondary" onclick="goBackToGroup()">Back to Group</button>
+        <button class="secondary" onclick="doLogout()">Log Out</button>
+      </div>
     </div>
     
     <h2 id="event-details-title"></h2>
@@ -2706,6 +2712,7 @@ async function parseCSV(file) {
           ratIdx=fc('rating'), avgIdx=fc('average','avgrating'), cwIdx=fc('avgweight','averageweight'),
           yrIdx=fc('yearpublished'), ownIdx=fc('own','owned'),
           imgIdx=fc('imageid','image'), typeIdx=fc('itemtype','type'),
+          rankIdx=fc('rank','bggrank','boardgamerank'),
           bestPIdx=fc('bggbestplayers','bestplayers','recommended players'),
           recPIdx=fc('bggrecplayers','recplayers');
 
@@ -2766,6 +2773,7 @@ async function parseCSV(file) {
             average: parseFloat(col(avgIdx)) || 5.0,
             complexity: parseFloat(col(cwIdx)) || 2.5,
             yearPublished: parseInt(col(yrIdx)) || 2000,
+            rank: parseInt(col(rankIdx)) || 999999,
             itemType: col(typeIdx) || 'standalone',
             bestPlayers: bestPlayers,
             recPlayers: recPlayers,
@@ -3064,20 +3072,27 @@ function toggleAllGameInclusions() {
     
     // Determine if this is an event vote
     const isEventVote = currentVote && currentVote.eventId;
-    const memberList = isEventVote 
-        ? (currentEvent ? currentEvent.attendees : [])
-        : (activeGroup ? activeGroup.members : []);
+    
+    let memberList = [];
+    if (isEventVote && currentEvent) {
+        memberList = currentEvent.attendees;
+        // Plus ones don't have games, so we only need regular attendees
+    } else if (activeGroup) {
+        memberList = activeGroup.members;
+    }
     
     memberList.forEach(username => {
         const gamesCb = document.getElementById('pc-games-' + username);
-        if (gamesCb && !gamesCb.disabled) {
+        if (gamesCb) {
             gamesCb.checked = includeAll;
             
             // Update card appearance
             const card = document.getElementById('pc-' + username);
             if (card) {
                 const mainCb = document.getElementById('pc-check-' + username);
-                card.classList.toggle('selected', mainCb.checked || gamesCb.checked);
+                if (mainCb) {
+                    card.classList.toggle('selected', mainCb.checked || gamesCb.checked);
+                }
             }
         }
     });
@@ -3924,6 +3939,7 @@ async function openEvent(eventId) {
     const eventName = event.name || formatEventDate(event.date);
     document.getElementById('event-details-title').textContent = eventName;
     document.getElementById('event-details-subtitle').textContent = formatEventDate(event.date);
+    document.getElementById('event-group-name').textContent = activeGroup.name;
     
     await renderEventAttendees();
     renderScheduledGames();
@@ -4768,7 +4784,8 @@ async function renderEventAttendees() {
         else if (isInGame) sortOrder = 2;
         else sortOrder = 1;
         
-        const displayName = po.name || 'Plus One';
+        // Get display name - if no custom name, will be set later in rendering
+        const displayName = po.name || '';
         
         allAttendees.push({
             type: 'plusone',
@@ -4783,7 +4800,7 @@ async function renderEventAttendees() {
         });
     });
     
-    // Sort: first by status (looking=1, playing=2, left=3), then alphabetically by display name
+    // Sort: first by status (looking=1, playing=2, late=3, left=4), then alphabetically by display name
     allAttendees.sort((a, b) => {
         if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
         return a.displayName.localeCompare(b.displayName);
@@ -4826,12 +4843,17 @@ async function renderEventAttendees() {
         } else {
             // Plus one formatting
             const plusOneNum = getPlusOneNumber(att.user);
+            
+            // Get the owner's display name
+            const ownerUser = regularAttendees.find(u => u && u.username === att.user.addedBy);
+            const ownerDisplayName = ownerUser ? ownerUser.displayName : att.user.addedBy;
+            
             if (att.user.name) {
                 // Has custom name
-                title = `<span style="font-size:16px; font-weight:600;">${att.user.name}</span> <span style="font-size:13px; color:#999;">(${att.user.addedBy} - Plus ${plusOneNum})</span>${isMyPlusOne ? ' <span style="color:#667eea; font-size:11px; font-weight:600;">YOUR +1</span>' : ''} ${statusText}`;
+                title = `<span style="font-size:16px; font-weight:600;">${att.user.name}</span> <span style="font-size:13px; color:#999;">(${att.user.addedBy} - +${plusOneNum})</span>${isMyPlusOne ? ' <span style="color:#667eea; font-size:11px; font-weight:600;">YOUR +1</span>' : ''} ${statusText}`;
             } else {
-                // No custom name
-                title = `<span style="font-size:16px; font-weight:600;">Plus One</span> <span style="font-size:13px; color:#999;">(${att.user.addedBy} - Plus ${plusOneNum})</span>${isMyPlusOne ? ' <span style="color:#667eea; font-size:11px; font-weight:600;">YOUR +1</span>' : ''} ${statusText}`;
+                // No custom name - show "[OwnerDisplayName] +X"
+                title = `<span style="font-size:16px; font-weight:600;">${ownerDisplayName} +${plusOneNum}</span> <span style="font-size:13px; color:#999;">(${att.user.addedBy} - +${plusOneNum})</span>${isMyPlusOne ? ' <span style="color:#667eea; font-size:11px; font-weight:600;">YOUR +1</span>' : ''} ${statusText}`;
             }
         }
         
