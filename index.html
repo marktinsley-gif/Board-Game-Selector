@@ -2348,19 +2348,20 @@ function sortWithExpansions(gameA, gameB, valueFunc) {
         return gameA.name.localeCompare(gameB.name);
     }
     
-    // Different base games - sort by the base game name first using the value function
-    // Create dummy games with the base names to get their values
-    const baseA = {name: aBase, ...gameA};
-    const baseB = {name: bBase, ...gameB};
-    const baseValA = valueFunc(baseA);
-    const baseValB = valueFunc(baseB);
+    // Different base games - compare them by their value, treating expansions as having the same value as their base
+    const valA = valueFunc(gameA);
+    const valB = valueFunc(gameB);
     
-    if (baseValA !== baseValB) {
-        return baseValA - baseValB;
+    if (valA !== valB) {
+        return valA - valB;
     }
     
-    // Same value for base games, sort alphabetically by base name
-    return aBase.localeCompare(bBase);
+    // Same value - sort alphabetically by base name
+    const baseCompare = aBase.localeCompare(bBase);
+    if (baseCompare !== 0) return baseCompare;
+    
+    // Same base name (shouldn't happen if different bases), sort by full name
+    return gameA.name.localeCompare(gameB.name);
 }
 
 async function renderGroupCollection() {
@@ -4392,29 +4393,12 @@ async function renderEventVoteParticipants() {
     // Add plus ones who haven't left
     const plusOnes = currentEvent.plusOnes || [];
     
-    // Get all regular attendees for display name lookup
-    const allRegularAttendees = await Promise.all(activeAttendees.map(username => fsGetUser(username)));
-    
     plusOnes.forEach(po => {
         const status = attendeeStatuses[po.id] || 'active';
         if (status === 'left') return;
         
-        // Format display name properly
-        let displayName;
-        if (po.name) {
-            // Has custom name - use it
-            displayName = po.name;
-        } else {
-            // No custom name - use "[OwnerDisplayName] +X" format
-            const ownerUser = allRegularAttendees.find(u => u && u.username === po.addedBy);
-            const ownerDisplayName = ownerUser ? ownerUser.displayName : po.addedBy;
-            
-            // Calculate plus one number
-            const userPlusOnes = plusOnes.filter(p => p.addedBy === po.addedBy);
-            const plusOneNum = userPlusOnes.findIndex(p => p.id === po.id) + 1;
-            
-            displayName = `${ownerDisplayName} +${plusOneNum}`;
-        }
+        // Use the stored name (which is now always properly formatted)
+        const displayName = po.name;
         
         const div = document.createElement('div');
         div.className = 'participant-card';
@@ -5042,20 +5026,9 @@ async function renderEventAttendees() {
             title = `<span style="font-size:16px; font-weight:600;">${att.displayName}</span> <span style="font-size:13px; color:#999;">(${att.username})</span>${isMe ? ' <span style="color:#667eea; font-size:11px; font-weight:600;">YOU</span>' : ''} ${statusText}`;
             gameDetails = `<div class="item-sub">Bringing ${bringingCount} of ${totalGames} games</div>${gameDetails}`;
         } else {
-            // Plus one formatting
+            // Plus one formatting - name is already properly formatted in po.name
             const plusOneNum = getPlusOneNumber(att.user);
-            
-            // Get the owner's display name
-            const ownerUser = regularAttendees.find(u => u && u.username === att.user.addedBy);
-            const ownerDisplayName = ownerUser ? ownerUser.displayName : att.user.addedBy;
-            
-            if (att.user.name) {
-                // Has custom name
-                title = `<span style="font-size:16px; font-weight:600;">${att.user.name}</span> <span style="font-size:13px; color:#999;">(${att.user.addedBy} +${plusOneNum})</span>${isMyPlusOne ? ' <span style="color:#667eea; font-size:11px; font-weight:600;">YOUR +1</span>' : ''} ${statusText}`;
-            } else {
-                // No custom name - show "[OwnerDisplayName] +X"
-                title = `<span style="font-size:16px; font-weight:600;">${ownerDisplayName} +${plusOneNum}</span> <span style="font-size:13px; color:#999;">(${att.user.addedBy} +${plusOneNum})</span>${isMyPlusOne ? ' <span style="color:#667eea; font-size:11px; font-weight:600;">YOUR +1</span>' : ''} ${statusText}`;
-            }
+            title = `<span style="font-size:16px; font-weight:600;">${att.displayName}</span> <span style="font-size:13px; color:#999;">(${att.user.addedBy} +${plusOneNum})</span>${isMyPlusOne ? ' <span style="color:#667eea; font-size:11px; font-weight:600;">YOUR +1</span>' : ''} ${statusText}`;
         }
         
         // Build action buttons
@@ -5267,7 +5240,7 @@ function hideAddPlusOne() {
 }
 
 async function addPlusOneSubmit() {
-    const name = document.getElementById('plus-one-name').value.trim();
+    const customName = document.getElementById('plus-one-name').value.trim();
     
     showLoading(true);
     
@@ -5277,9 +5250,25 @@ async function addPlusOneSubmit() {
     
     const plusOneId = 'plusone_' + session.username + '_' + Date.now().toString(36);
     
+    let finalName;
+    if (customName) {
+        // Use custom name as-is
+        finalName = customName;
+    } else {
+        // No custom name - generate "DisplayName +X" format
+        const user = await fsGetUser(session.username);
+        const ownerDisplayName = user.displayName || session.username;
+        
+        // Calculate which number plus one this is
+        const userPlusOnes = currentEvent.plusOnes.filter(po => po.addedBy === session.username);
+        const plusOneNum = userPlusOnes.length + 1;
+        
+        finalName = `${ownerDisplayName} +${plusOneNum}`;
+    }
+    
     currentEvent.plusOnes.push({
         id: plusOneId,
-        name: name || '', // Store empty string if no name, will display as "Plus One"
+        name: finalName,
         addedBy: session.username,
         addedAt: new Date().toISOString()
     });
@@ -5391,7 +5380,7 @@ async function renderScheduledGames() {
                 </div>
             </div>
             <div style="margin-top:10px; display:flex; gap:6px; flex-wrap:wrap;">
-                ${isOpen && !isPlayer && !hasMyPlusOnes ? `<button class="success" style="padding:5px 10px; font-size:13px; margin:0;" onclick="joinScheduledGame('${sg.id}')">Join Game</button>` : ''}
+                ${isOpen && !isPlayer ? `<button class="success" style="padding:5px 10px; font-size:13px; margin:0;" onclick="joinScheduledGame('${sg.id}')">Join Game</button>` : ''}
                 ${isPlayer ? `<button class="secondary" style="padding:5px 10px; font-size:13px; margin:0;" onclick="leaveScheduledGame('${sg.id}')">Leave Game</button>` : ''}
                 ${hasMyPlusOnes ? `<button class="secondary" style="padding:5px 10px; font-size:13px; margin:0;" onclick="removePlusOneFromGame('${sg.id}')">Remove Plus One</button>` : ''}
                 ${isPlayer && isOpen ? `<button style="padding:5px 10px; font-size:13px; margin:0;" onclick="closeScheduledGame('${sg.id}')">Close to Others</button>` : ''}
@@ -6050,10 +6039,25 @@ class DualRange {
                                 currentEvent = activeGroup.events[state.currentEventId];
                             }
                             
-                            // Navigate to the saved page
-                            if (state.page) {
-                                goToPage(state.page);
+                            // Navigate to the saved page with proper rendering
+                            if (state.page === 'page-home') {
+                                goHome();
+                            } else if (state.page === 'page-group') {
+                                goToGroup(activeGroupCode);
+                            } else if (state.page === 'page-event-details' && currentEvent) {
+                                openEvent(currentEvent.id);
+                            } else if (state.page === 'page-group-collection') {
+                                viewGroupCollection();
+                            } else if (state.page === 'page-event-collection' && currentEvent) {
+                                viewEventCollection();
+                            } else if (state.page === 'page-manage-event-games' && currentEvent) {
+                                manageMyEventGames();
+                            } else if (state.page === 'page-group-details') {
+                                viewGroupDetails();
+                            } else if (state.page === 'page-group-members') {
+                                viewGroupMembers();
                             } else {
+                                // For other pages, try to go to group or home
                                 goToGroup(activeGroupCode);
                             }
                         } else {
