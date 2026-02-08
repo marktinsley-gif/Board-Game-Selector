@@ -2747,14 +2747,27 @@ async function goToVoteParticipants() {
     // Reload activeGroup from database using the global activeGroupCode
     activeGroup = await fsGetGroup(activeGroupCode);
     
-    // Reload the vote to get latest saved state
-    const savedVote = activeGroup.votes[currentVote.id];
-    if (savedVote) {
-        currentVote = savedVote;
+    // For event votes, reload the event and vote from event.votes
+    if (currentVote && currentVote.eventId) {
+        currentEvent = activeGroup.events[currentVote.eventId];
+        const savedVote = currentEvent.votes[currentVote.id];
+        if (savedVote) {
+            currentVote = savedVote;
+        }
+        
+        updateVotePageIcons();
+        await renderEventVoteParticipants();
+    } else {
+        // Regular group vote
+        const savedVote = activeGroup.votes[currentVote.id];
+        if (savedVote) {
+            currentVote = savedVote;
+        }
+        
+        updateVotePageIcons();
+        await renderParticipantCards();
     }
     
-    updateVotePageIcons();
-    await renderParticipantCards();
     goToPage('page-vote-participants');
 }
 
@@ -3019,6 +3032,16 @@ async function vpContinue() {
                 }
             });
         }
+    }
+    
+    // For event votes, also check plus ones
+    if (isEventVote && currentEvent.plusOnes) {
+        currentEvent.plusOnes.forEach(po => {
+            const cb = document.getElementById('pc-check-' + po.id);
+            if (cb && cb.checked) {
+                participants.push(po.id);
+            }
+        });
     }
 
     if (participants.length === 0) { showAlert('vp-error','Select at least one participant'); return; }
@@ -4096,7 +4119,8 @@ async function renderEventVoteParticipants() {
         const status = attendeeStatuses[po.id] || 'active';
         if (status === 'left') return;
         
-        const displayName = po.name || `Plus One for ${po.addedBy}`;
+        // Use the stored name (which is already properly formatted)
+        const displayName = po.name;
         
         const div = document.createElement('div');
         div.className = 'participant-card';
@@ -4121,6 +4145,41 @@ async function renderEventVoteParticipants() {
         
         container.appendChild(div);
     });
+    
+    // Restore previously selected participants
+    await new Promise(resolve => setTimeout(resolve, 50));
+    
+    if (currentVote && currentVote.participants && currentVote.participants.length > 0) {
+        currentVote.participants.forEach(id => {
+            const mainCb = document.getElementById('pc-check-' + id);
+            if (mainCb) {
+                mainCb.checked = true;
+                const card = document.getElementById('pc-' + id);
+                if (card) {
+                    card.classList.add('selected');
+                    const gamesCb = document.getElementById('pc-games-' + id);
+                    if (gamesCb) {
+                        gamesCb.disabled = false;
+                        if (currentVote.includeGamesFrom && currentVote.includeGamesFrom.includes(id)) {
+                            gamesCb.checked = true;
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    // Restore vote name if it was set
+    if (currentVote && currentVote.voteName) {
+        const nameInput = document.getElementById('vote-name-input');
+        if (nameInput) nameInput.value = currentVote.voteName;
+    }
+    
+    // Restore import promotions checkbox
+    if (currentVote && typeof currentVote.importPromotions !== 'undefined') {
+        const importCb = document.getElementById('import-group-promotions');
+        if (importCb) importCb.checked = currentVote.importPromotions;
+    }
 }
 
 function openEventVote(voteId) {
@@ -4608,7 +4667,8 @@ async function renderEventAttendees() {
         else if (isInGame) sortOrder = 2;
         else sortOrder = 1;
         
-        const displayName = po.name || `Plus One for ${po.addedBy}`;
+        // Use the stored name (which should already be properly formatted)
+        const displayName = po.name;
         
         allAttendees.push({
             type: 'plusone',
@@ -4826,11 +4886,33 @@ async function addPlusOneSubmit() {
         currentEvent.plusOnes = [];
     }
     
+    // Get current user's display name
+    const user = await fsGetUser(session.username);
+    const userDisplayName = user.displayName || session.username;
+    
+    let displayName;
+    if (name) {
+        // User provided a custom name
+        displayName = `${userDisplayName} (${session.username}) - ${name}`;
+    } else {
+        // Auto-generate Plus 1, Plus 2, etc.
+        let plusNumber = 1;
+        let proposedName = `${userDisplayName} (${session.username}) - Plus ${plusNumber}`;
+        
+        // Check if this name already exists, if so increment
+        while (currentEvent.plusOnes.some(po => po.name === proposedName || (!po.name && po.addedBy === session.username && po.autoNumber === plusNumber))) {
+            plusNumber++;
+            proposedName = `${userDisplayName} (${session.username}) - Plus ${plusNumber}`;
+        }
+        
+        displayName = proposedName;
+    }
+    
     const plusOneId = 'plusone_' + session.username + '_' + Date.now().toString(36);
     
     currentEvent.plusOnes.push({
         id: plusOneId,
-        name: name,
+        name: displayName,
         addedBy: session.username,
         addedAt: new Date().toISOString()
     });
@@ -4842,7 +4924,20 @@ async function addPlusOneSubmit() {
     await renderEventAttendees();
 }
 
-function renderScheduledGames() {
+// Helper function to get display name for any participant (user or plus one)
+async function getParticipantDisplayName(id) {
+    // Check if it's a plus one
+    if (currentEvent && currentEvent.plusOnes) {
+        const plusOne = currentEvent.plusOnes.find(po => po.id === id);
+        if (plusOne) return plusOne.name;
+    }
+    
+    // Otherwise it's a regular user
+    const user = await fsGetUser(id);
+    return user ? (user.displayName || id) : id;
+}
+
+async function renderScheduledGames() {
     const container = document.getElementById('scheduled-games-list');
     if (!container) return;
     
@@ -4856,12 +4951,23 @@ function renderScheduledGames() {
         return;
     }
     
-    activeGames.forEach(sg => {
+    for (const sg of activeGames) {
         const game = sg.game;
-        const players = sg.players;
-        const isPlayer = players.includes(session.username);
-        const isOpen = sg.openToOthers && sg.maxPlayers && players.length < sg.maxPlayers;
-        const spotsLeft = sg.maxPlayers ? sg.maxPlayers - players.length : 0;
+        const playerIds = sg.players;
+        
+        // Get display names for all players
+        const playerNames = await Promise.all(playerIds.map(id => getParticipantDisplayName(id)));
+        
+        const isPlayer = playerIds.includes(session.username);
+        
+        // Check if user has any plus ones in this game
+        const plusOnes = currentEvent.plusOnes || [];
+        const myPlusOnes = plusOnes.filter(po => po.addedBy === session.username);
+        const myPlusOnesInGame = myPlusOnes.filter(po => playerIds.includes(po.id));
+        const hasMyPlusOnes = myPlusOnesInGame.length > 0;
+        
+        const isOpen = sg.openToOthers && sg.maxPlayers && playerIds.length < sg.maxPlayers;
+        const spotsLeft = sg.maxPlayers ? sg.maxPlayers - playerIds.length : 0;
         
         const div = document.createElement('div');
         div.className = 'list-item';
@@ -4880,19 +4986,21 @@ function renderScheduledGames() {
                 <div>
                     <div class="item-title">${game.name} ${statusBadge}</div>
                     <div class="item-sub">${game.minPlayers}–${game.maxPlayers} players • ${game.playingTime} min</div>
-                    <div style="font-size:13px; color:#667eea; margin-top:4px;">Players: ${players.join(', ')}</div>
+                    <div style="font-size:13px; color:#667eea; margin-top:4px;">Players: ${playerNames.join(', ')}</div>
                 </div>
             </div>
             <div style="margin-top:10px; display:flex; gap:6px; flex-wrap:wrap;">
-                ${isOpen && !isPlayer ? `<button class="success" style="padding:5px 10px; font-size:13px; margin:0;" onclick="joinScheduledGame('${sg.id}')">Join Game</button>` : ''}
+                ${isOpen && !isPlayer && !hasMyPlusOnes ? `<button class="success" style="padding:5px 10px; font-size:13px; margin:0;" onclick="joinScheduledGame('${sg.id}')">Join Game</button>` : ''}
+                ${isOpen && !isPlayer && !hasMyPlusOnes ? `<button class="success" style="padding:5px 10px; font-size:13px; margin:0;" onclick="showAddPlusOneToGame('${sg.id}')">Add Plus One</button>` : ''}
                 ${isPlayer ? `<button class="secondary" style="padding:5px 10px; font-size:13px; margin:0;" onclick="leaveScheduledGame('${sg.id}')">Leave Game</button>` : ''}
+                ${isPlayer && isOpen ? `<button style="padding:5px 10px; font-size:13px; margin:0;" onclick="showAddPlusOneToGame('${sg.id}')">Add Plus One</button>` : ''}
                 ${isPlayer && isOpen ? `<button style="padding:5px 10px; font-size:13px; margin:0;" onclick="closeScheduledGame('${sg.id}')">Close to Others</button>` : ''}
-                ${isPlayer ? `<button class="success" style="padding:5px 10px; font-size:13px; margin:0;" onclick="markGameComplete('${sg.id}')">Mark Complete</button>` : ''}
-                ${isPlayer ? `<button class="danger" style="padding:5px 10px; font-size:13px; margin:0;" onclick="deleteScheduledGame('${sg.id}')">Delete</button>` : ''}
+                ${isPlayer || hasMyPlusOnes ? `<button class="success" style="padding:5px 10px; font-size:13px; margin:0;" onclick="markGameComplete('${sg.id}')">Mark Complete</button>` : ''}
+                ${isPlayer || hasMyPlusOnes ? `<button class="danger" style="padding:5px 10px; font-size:13px; margin:0;" onclick="deleteScheduledGame('${sg.id}')">Delete</button>` : ''}
             </div>
         `;
         container.appendChild(div);
-    });
+    }
 }
 
 async function joinScheduledGame(gameId) {
@@ -4917,7 +5025,60 @@ async function joinScheduledGame(gameId) {
     await fsSaveGroup(activeGroup);
     showLoading(false);
     
-    renderScheduledGames();
+    await renderScheduledGames();
+    await renderEventAttendees();
+}
+
+async function showAddPlusOneToGame(gameId) {
+    const sg = currentEvent.scheduledGames[gameId];
+    
+    // Get user's plus ones that aren't already in the game and haven't left
+    const plusOnes = currentEvent.plusOnes || [];
+    const myPlusOnes = plusOnes.filter(po => po.addedBy === session.username);
+    const attendeeStatuses = currentEvent.attendeeStatuses || {};
+    const availablePlusOnes = myPlusOnes.filter(po => {
+        const status = attendeeStatuses[po.id] || 'active';
+        return status !== 'left' && !sg.players.includes(po.id);
+    });
+    
+    if (availablePlusOnes.length === 0) {
+        alert('You don\'t have any plus ones available to add to this game.');
+        return;
+    }
+    
+    // Show selection dialog
+    const spotsLeft = sg.maxPlayers ? sg.maxPlayers - sg.players.length : 999;
+    let message = `Select plus ones to add to ${sg.game.name}:`;
+    
+    const selectedPlusOnes = [];
+    for (const po of availablePlusOnes) {
+        if (selectedPlusOnes.length >= spotsLeft) break;
+        if (confirm(`${message}\n\nAdd ${po.name}?`)) {
+            selectedPlusOnes.push(po.id);
+        }
+        message = 'Add another plus one?';
+    }
+    
+    if (selectedPlusOnes.length === 0) return;
+    
+    showLoading(true);
+    
+    // Add selected plus ones
+    selectedPlusOnes.forEach(id => {
+        if (!sg.players.includes(id)) {
+            sg.players.push(id);
+        }
+    });
+    
+    // If now at max, close to others
+    if (sg.maxPlayers && sg.players.length >= sg.maxPlayers) {
+        sg.openToOthers = false;
+    }
+    
+    await fsSaveGroup(activeGroup);
+    showLoading(false);
+    
+    await renderScheduledGames();
     await renderEventAttendees();
 }
 
@@ -5064,22 +5225,36 @@ async function showScheduleGamePage(game, tiedCount) {
         </div>
     `;
     
-    // Render player selection
+    // Render player selection - get display names for all participants
     const playersContainer = document.getElementById('schedule-game-players');
     playersContainer.innerHTML = '';
     
-    currentVote.participants.forEach(username => {
+    for (const id of currentVote.participants) {
+        let displayName = id;
+        
+        // Check if it's a plus one
+        const plusOnes = currentEvent.plusOnes || [];
+        const plusOne = plusOnes.find(po => po.id === id);
+        
+        if (plusOne) {
+            displayName = plusOne.name;
+        } else {
+            // Regular user
+            const user = await fsGetUser(id);
+            if (user) displayName = user.displayName || id;
+        }
+        
         const div = document.createElement('div');
         div.className = 'participant-card selected';
-        div.id = 'sgp-' + username;
+        div.id = 'sgp-' + id;
         div.innerHTML = `
             <div class="pc-row">
-                <input type="checkbox" id="sgp-check-${username}" checked>
-                <label for="sgp-check-${username}" style="font-weight:600; color:#333;">${username}</label>
+                <input type="checkbox" id="sgp-check-${id}" checked>
+                <label for="sgp-check-${id}" style="font-weight:600; color:#333;">${displayName}</label>
             </div>
         `;
         
-        const cb = div.querySelector('#sgp-check-' + username);
+        const cb = div.querySelector('#sgp-check-' + id);
         cb.addEventListener('change', () => {
             div.classList.toggle('selected', cb.checked);
             checkAdditionalPlayersNeeded(game);
@@ -5092,7 +5267,7 @@ async function showScheduleGamePage(game, tiedCount) {
         });
         
         playersContainer.appendChild(div);
-    });
+    }
     
     // Check if additional players section needed
     checkAdditionalPlayersNeeded(game);
