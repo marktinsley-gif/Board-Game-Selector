@@ -519,6 +519,12 @@ button.ghost:hover { background:#667eea; color:white; }
     <h3>Members</h3>
     <div id="group-details-members"></div>
     
+    <h3 style="margin-top:24px;">Active Votes</h3>
+    <div id="group-admin-active-votes"></div>
+    
+    <h3 style="margin-top:24px;">Past Votes</h3>
+    <div id="group-admin-past-votes"></div>
+    
     <button class="secondary" onclick="goBackToGroup()" style="margin-top:20px;">Back to Group</button>
   </div>
 </div>
@@ -529,7 +535,10 @@ button.ghost:hover { background:#667eea; color:white; }
 <div class="page" id="page-group-collection">
   <div class="card">
     <div class="topbar">
-      <span id="gc-icon-header" class="logo" onclick="goToGroupOrHome()">🎲</span>
+      <div class="topbar-left">
+        <span id="gc-icon-header" class="logo" onclick="goToGroupOrHome()">🎲</span>
+        <span id="gc-group-name" style="font-weight:700; color:#333; font-size:18px;"></span>
+      </div>
       <div style="display:flex; gap:8px;">
         <button class="secondary" onclick="goBackToGroup()">Back to Group</button>
         <button class="secondary" onclick="doLogout()">Log Out</button>
@@ -727,7 +736,10 @@ button.ghost:hover { background:#667eea; color:white; }
 <div class="page" id="page-event-collection">
   <div class="card">
     <div class="topbar">
-      <span id="event-collection-icon" class="logo" onclick="goToGroupOrHome()">🎲</span>
+      <div class="topbar-left">
+        <span id="event-collection-icon" class="logo" onclick="goToGroupOrHome()">🎲</span>
+        <span id="event-collection-group-name" style="font-weight:700; color:#333; font-size:18px;"></span>
+      </div>
       <div style="display:flex; gap:8px;">
         <button class="secondary" onclick="goBackToEvent()">Back to Event</button>
         <button class="secondary" onclick="doLogout()">Log Out</button>
@@ -823,9 +835,13 @@ button.ghost:hover { background:#667eea; color:white; }
 <div class="page" id="page-manage-event-games">
   <div class="card">
     <div class="topbar">
-      <span id="manage-event-games-icon" class="logo" onclick="goToGroupOrHome()">🎲</span>
+      <div class="topbar-left">
+        <span id="manage-event-games-icon" class="logo" onclick="goToGroupOrHome()">🎲</span>
+        <span id="manage-event-games-group-name" style="font-weight:700; color:#333; font-size:18px;"></span>
+      </div>
       <div style="display:flex; gap:8px;">
-        <button class="secondary" onclick="goBackToEventCollection()">Back</button>
+        <button class="secondary" onclick="goBackToEvent()">Back to Event</button>
+        <button class="secondary" onclick="goBackToEventCollection()">Back to Collection</button>
         <button class="secondary" onclick="doLogout()">Log Out</button>
       </div>
     </div>
@@ -1477,7 +1493,10 @@ async function renderHomeGroups(user) {
 
     groups.forEach(g => {
         if (!g) return;
-        const activeVotes = Object.values(g.votes || {}).filter(v => v.status === 'active' && v.participants.includes(user.username));
+        // Filter out event votes - only show group votes
+        const activeVotes = Object.values(g.votes || {}).filter(v => 
+            !v.eventId && v.status === 'active' && v.participants.includes(user.username)
+        );
         const div = document.createElement('div');
         div.className = 'group-card';
         div.onclick = () => goToGroup(g.code);
@@ -1769,7 +1788,122 @@ async function viewGroupDetails() {
     }
     
     await renderGroupDetailsMembers();
+    renderAdminActiveVotes();
+    renderAdminPastVotes();
     goToPage('page-group-details');
+}
+
+function renderAdminActiveVotes() {
+    const container = document.getElementById('group-admin-active-votes');
+    
+    // Filter out event votes - only show group votes
+    const activeVotes = Object.values(activeGroup.votes || {}).filter(v => 
+        !v.eventId && v.status === 'active'
+    );
+    
+    if (activeVotes.length === 0) {
+        container.innerHTML = '<p style="color:#666; font-size:13px; padding:8px 0;">No active votes.</p>';
+        return;
+    }
+    
+    activeVotes.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    
+    container.innerHTML = '';
+    activeVotes.forEach(vote => {
+        const div = document.createElement('div');
+        div.className = 'list-item';
+        div.style.cursor = 'pointer';
+        
+        const voteName = vote.voteName || `Vote by ${vote.createdBy}`;
+        const gameCount = (vote.filteredGames || []).length;
+        
+        div.innerHTML = `
+            <div class="list-item-left">
+                <div class="item-title">${voteName}</div>
+                <div class="item-sub">${gameCount} games • ${vote.participants.length} participants • ${new Date(vote.createdAt).toLocaleDateString()}</div>
+            </div>
+            <div style="display:flex; gap:8px;">
+                <button class="secondary" style="padding:5px 10px; font-size:13px;" onclick="event.stopPropagation(); viewAdminVote('${vote.id}')">View</button>
+                <button class="danger" style="padding:5px 10px; font-size:13px;" onclick="event.stopPropagation(); deleteAdminVote('${vote.id}')">Delete</button>
+            </div>
+        `;
+        
+        container.appendChild(div);
+    });
+}
+
+function renderAdminPastVotes() {
+    const container = document.getElementById('group-admin-past-votes');
+    
+    // Filter out event votes and archived - only show group votes
+    const pastVotes = Object.values(activeGroup.votes || {}).filter(v => 
+        !v.eventId && v.status === 'completed' && !v.archived
+    );
+    
+    if (pastVotes.length === 0) {
+        container.innerHTML = '<p style="color:#666; font-size:13px; padding:8px 0;">No past votes.</p>';
+        return;
+    }
+    
+    pastVotes.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    
+    container.innerHTML = '';
+    pastVotes.forEach(vote => {
+        const div = document.createElement('div');
+        div.className = 'list-item';
+        div.style.cursor = 'pointer';
+        
+        const voteName = vote.voteName || `Vote by ${vote.createdBy}`;
+        const winner = vote.winner ? vote.winner.name : 'No winner';
+        
+        div.innerHTML = `
+            <div class="list-item-left">
+                <div class="item-title">${voteName}</div>
+                <div class="item-sub">Winner: ${winner} • ${new Date(vote.createdAt).toLocaleDateString()}</div>
+            </div>
+            <div style="display:flex; gap:8px;">
+                <button class="secondary" style="padding:5px 10px; font-size:13px;" onclick="event.stopPropagation(); viewAdminVote('${vote.id}')">View</button>
+                <button style="padding:5px 10px; font-size:13px;" onclick="event.stopPropagation(); archiveAdminVote('${vote.id}')">Archive</button>
+                <button class="danger" style="padding:5px 10px; font-size:13px;" onclick="event.stopPropagation(); deleteAdminVote('${vote.id}')">Delete</button>
+            </div>
+        `;
+        
+        container.appendChild(div);
+    });
+}
+
+async function viewAdminVote(voteId) {
+    const vote = activeGroup.votes[voteId];
+    if (!vote) return;
+    
+    currentVote = vote;
+    openVote(voteId);
+}
+
+async function deleteAdminVote(voteId) {
+    if (!confirm('Delete this vote? This cannot be undone.')) return;
+    
+    showLoading(true);
+    delete activeGroup.votes[voteId];
+    await fsSaveGroup(activeGroup);
+    showLoading(false);
+    
+    renderAdminActiveVotes();
+    renderAdminPastVotes();
+}
+
+async function archiveAdminVote(voteId) {
+    if (!confirm('Archive this vote? It will no longer appear on the group page.')) return;
+    
+    showLoading(true);
+    const vote = activeGroup.votes[voteId];
+    if (vote) {
+        vote.archived = true;
+    }
+    await fsSaveGroup(activeGroup);
+    showLoading(false);
+    
+    renderAdminPastVotes();
 }
 
 async function renderGroupDetailsMembers() {
@@ -2119,6 +2253,8 @@ async function viewGroupCollection() {
         iconEl.className = 'logo';
     }
     
+    document.getElementById('gc-group-name').textContent = activeGroup.name;
+    
     // Initialize sliders for group collection filters
     initGCSliders();
     
@@ -2177,30 +2313,54 @@ function sortWithExpansions(gameA, gameB, valueFunc) {
     const aIsExp = gameA.itemType === 'expansion' || gameA.itemType === 'boardgameexpansion';
     const bIsExp = gameB.itemType === 'expansion' || gameB.itemType === 'boardgameexpansion';
     
-    // If one is expansion and one is base game, check if they're related
-    if (aIsExp && !bIsExp) {
-        // If expansion A is for base game B, A should come after B
-        if (gameA.name.toLowerCase().includes(gameB.name.toLowerCase())) {
-            return 1; // A after B
+    // Helper to extract base game name from expansion
+    function getBaseName(game) {
+        if (!game.itemType || game.itemType === 'standalone') return game.name;
+        
+        // Common expansion patterns: "Base Game: Expansion", "Base Game – Expansion", "Base Game - Expansion"
+        const patterns = [
+            /^(.+?):\s*.+$/,  // "Wingspan: European Expansion"
+            /^(.+?)\s*–\s*.+$/,  // "Wingspan – European Expansion"
+            /^(.+?)\s*-\s*.+$/,  // "Wingspan - European Expansion"
+            /^(.+?)\s*\(.+\)$/,  // "Wingspan (European)"
+        ];
+        
+        for (const pattern of patterns) {
+            const match = game.name.match(pattern);
+            if (match) return match[1].trim();
         }
-    }
-    if (bIsExp && !aIsExp) {
-        // If expansion B is for base game A, B should come after A
-        if (gameB.name.toLowerCase().includes(gameA.name.toLowerCase())) {
-            return -1; // B after A
-        }
+        
+        // If no pattern matches, return the name (will sort normally)
+        return game.name;
     }
     
-    // If both are expansions of the same game or neither is related, sort by value
-    const valA = valueFunc(gameA);
-    const valB = valueFunc(gameB);
+    const aBase = getBaseName(gameA);
+    const bBase = getBaseName(gameB);
     
-    if (valA === valB) {
-        // If values are equal, sort alphabetically
+    // If they're from the same base game, sort expansions after base
+    if (aBase === bBase) {
+        if (aIsExp && !bIsExp) return 1;  // A is expansion, B is base
+        if (!aIsExp && bIsExp) return -1; // A is base, B is expansion
+        // Both expansions or both base - sort by value
+        const valA = valueFunc(gameA);
+        const valB = valueFunc(gameB);
+        if (valA !== valB) return valA - valB;
         return gameA.name.localeCompare(gameB.name);
     }
     
-    return valA - valB;
+    // Different base games - sort by the base game name first using the value function
+    // Create dummy games with the base names to get their values
+    const baseA = {name: aBase, ...gameA};
+    const baseB = {name: bBase, ...gameB};
+    const baseValA = valueFunc(baseA);
+    const baseValB = valueFunc(baseB);
+    
+    if (baseValA !== baseValB) {
+        return baseValA - baseValB;
+    }
+    
+    // Same value for base games, sort alphabetically by base name
+    return aBase.localeCompare(bBase);
 }
 
 async function renderGroupCollection() {
@@ -4231,12 +4391,30 @@ async function renderEventVoteParticipants() {
     
     // Add plus ones who haven't left
     const plusOnes = currentEvent.plusOnes || [];
+    
+    // Get all regular attendees for display name lookup
+    const allRegularAttendees = await Promise.all(activeAttendees.map(username => fsGetUser(username)));
+    
     plusOnes.forEach(po => {
         const status = attendeeStatuses[po.id] || 'active';
         if (status === 'left') return;
         
-        // Use the stored name (which is already properly formatted)
-        const displayName = po.name;
+        // Format display name properly
+        let displayName;
+        if (po.name) {
+            // Has custom name - use it
+            displayName = po.name;
+        } else {
+            // No custom name - use "[OwnerDisplayName] +X" format
+            const ownerUser = allRegularAttendees.find(u => u && u.username === po.addedBy);
+            const ownerDisplayName = ownerUser ? ownerUser.displayName : po.addedBy;
+            
+            // Calculate plus one number
+            const userPlusOnes = plusOnes.filter(p => p.addedBy === po.addedBy);
+            const plusOneNum = userPlusOnes.findIndex(p => p.id === po.id) + 1;
+            
+            displayName = `${ownerDisplayName} +${plusOneNum}`;
+        }
         
         const div = document.createElement('div');
         div.className = 'participant-card';
@@ -4362,6 +4540,8 @@ async function viewEventCollection() {
         iconEl.textContent = '🎲';
         iconEl.className = 'logo';
     }
+    
+    document.getElementById('event-collection-group-name').textContent = activeGroup.name;
     
     initECSliders();
     await renderECOwnerCheckboxes();
@@ -4624,6 +4804,8 @@ async function manageMyEventGames() {
         iconEl.className = 'logo';
     }
     
+    document.getElementById('manage-event-games-group-name').textContent = activeGroup.name;
+    
     const user = await fsGetUser(session.username);
     const myGames = user.games || [];
     const bringingIds = currentEvent.attendeeGames[session.username] || [];
@@ -4869,10 +5051,10 @@ async function renderEventAttendees() {
             
             if (att.user.name) {
                 // Has custom name
-                title = `<span style="font-size:16px; font-weight:600;">${att.user.name}</span> <span style="font-size:13px; color:#999;">(${att.user.addedBy} - +${plusOneNum})</span>${isMyPlusOne ? ' <span style="color:#667eea; font-size:11px; font-weight:600;">YOUR +1</span>' : ''} ${statusText}`;
+                title = `<span style="font-size:16px; font-weight:600;">${att.user.name}</span> <span style="font-size:13px; color:#999;">(${att.user.addedBy} +${plusOneNum})</span>${isMyPlusOne ? ' <span style="color:#667eea; font-size:11px; font-weight:600;">YOUR +1</span>' : ''} ${statusText}`;
             } else {
                 // No custom name - show "[OwnerDisplayName] +X"
-                title = `<span style="font-size:16px; font-weight:600;">${ownerDisplayName} +${plusOneNum}</span> <span style="font-size:13px; color:#999;">(${att.user.addedBy} - +${plusOneNum})</span>${isMyPlusOne ? ' <span style="color:#667eea; font-size:11px; font-weight:600;">YOUR +1</span>' : ''} ${statusText}`;
+                title = `<span style="font-size:16px; font-weight:600;">${ownerDisplayName} +${plusOneNum}</span> <span style="font-size:13px; color:#999;">(${att.user.addedBy} +${plusOneNum})</span>${isMyPlusOne ? ' <span style="color:#667eea; font-size:11px; font-weight:600;">YOUR +1</span>' : ''} ${statusText}`;
             }
         }
         
