@@ -2477,9 +2477,21 @@ async function renderGroupCollection() {
     
     // Sort based on user preference
     if (sortBy === 'alphabetical') {
-        scored.sort((a, b) => a.game.name.localeCompare(b.game.name));
+        scored.sort((a, b) => sortWithExpansions(a.game, b.game, (g) => {
+            // For alphabetical, we can't return a number, so we need a different approach
+            // Return 0 and let the final name compare in sortWithExpansions handle it
+            return 0;
+        }));
+        // Since sortWithExpansions uses localeCompare at the end, this will work
     } else if (sortBy === 'promotions') {
-        scored.sort((a, b) => b.score - a.score);
+        scored.sort((a, b) => {
+            // For promotions, sort by score but keep expansions with base games
+            if (b.score === a.score) {
+                // Same promotion count - use expansion grouping
+                return sortWithExpansions(a.game, b.game, (g) => 0);
+            }
+            return b.score - a.score;
+        });
     } else if (sortBy === 'rating-high') {
         scored.sort((a, b) => sortWithExpansions(a.game, b.game, (g) => -(g.average || 0)));
     } else if (sortBy === 'rank') {
@@ -2506,8 +2518,15 @@ async function renderGroupCollection() {
         const myAction = gp[session.username] || 'neutral';
         const promotes = Object.entries(gp).filter(([,v]) => v === 'promote');
         
+        const isExpansion = game.itemType === 'expansion' || game.itemType === 'boardgameexpansion';
+        
         const div = document.createElement('div');
         div.className = 'game-item' + (myAction === 'promote' ? ' promoted' : '');
+        
+        // Make expansions visually smaller
+        if (isExpansion) {
+            div.style.cssText = 'opacity: 0.85; transform: scale(0.95); margin-left: 20px; padding: 8px 12px;';
+        }
         
         let promoteTags = '';
         if (promotes.length) {
@@ -4676,9 +4695,19 @@ async function renderEventCollection() {
     });
     
     if (sortBy === 'alphabetical') {
-        scored.sort((a, b) => a.game.name.localeCompare(b.game.name));
+        scored.sort((a, b) => sortWithExpansions(a.game, b.game, (g) => {
+            // For alphabetical, return 0 and let the final name compare in sortWithExpansions handle it
+            return 0;
+        }));
     } else if (sortBy === 'promotions') {
-        scored.sort((a, b) => b.score - a.score);
+        scored.sort((a, b) => {
+            // For promotions, sort by score but keep expansions with base games
+            if (b.score === a.score) {
+                // Same promotion count - use expansion grouping
+                return sortWithExpansions(a.game, b.game, (g) => 0);
+            }
+            return b.score - a.score;
+        });
     } else if (sortBy === 'rating-high') {
         scored.sort((a, b) => sortWithExpansions(a.game, b.game, (g) => -(g.average || 0)));
     } else if (sortBy === 'rank') {
@@ -4713,8 +4742,15 @@ async function renderEventCollection() {
         const myAction = gp[session.username] || 'neutral';
         const promotes = Object.entries(gp).filter(([,v]) => v === 'promote');
         
+        const isExpansion = game.itemType === 'expansion' || game.itemType === 'boardgameexpansion';
+        
         const div = document.createElement('div');
         div.className = 'game-item' + (myAction === 'promote' ? ' promoted' : '');
+        
+        // Make expansions visually smaller
+        if (isExpansion) {
+            div.style.cssText = 'opacity: 0.85; transform: scale(0.95); margin-left: 20px; padding: 8px 12px;';
+        }
         
         let promoteTags = '';
         if (promotes.length) {
