@@ -2308,62 +2308,6 @@ async function renderGCOwnerCheckboxes() {
     });
 }
 
-function sortWithExpansions(gameA, gameB, valueFunc) {
-    // Helper function to sort games while keeping expansions grouped with their base games
-    const aIsExp = gameA.itemType === 'expansion' || gameA.itemType === 'boardgameexpansion';
-    const bIsExp = gameB.itemType === 'expansion' || gameB.itemType === 'boardgameexpansion';
-    
-    // Helper to extract base game name from expansion
-    function getBaseName(game) {
-        if (!game.itemType || game.itemType === 'standalone') return game.name;
-        
-        // Common expansion patterns: "Base Game: Expansion", "Base Game – Expansion", "Base Game - Expansion"
-        const patterns = [
-            /^(.+?):\s*.+$/,  // "Wingspan: European Expansion"
-            /^(.+?)\s*–\s*.+$/,  // "Wingspan – European Expansion"
-            /^(.+?)\s*-\s*.+$/,  // "Wingspan - European Expansion"
-            /^(.+?)\s*\(.+\)$/,  // "Wingspan (European)"
-        ];
-        
-        for (const pattern of patterns) {
-            const match = game.name.match(pattern);
-            if (match) return match[1].trim();
-        }
-        
-        // If no pattern matches, return the name (will sort normally)
-        return game.name;
-    }
-    
-    const aBase = getBaseName(gameA);
-    const bBase = getBaseName(gameB);
-    
-    // If they're from the same base game, sort expansions after base
-    if (aBase === bBase) {
-        if (aIsExp && !bIsExp) return 1;  // A is expansion, B is base
-        if (!aIsExp && bIsExp) return -1; // A is base, B is expansion
-        // Both expansions or both base - sort by value
-        const valA = valueFunc(gameA);
-        const valB = valueFunc(gameB);
-        if (valA !== valB) return valA - valB;
-        return gameA.name.localeCompare(gameB.name);
-    }
-    
-    // Different base games - compare them by their value, treating expansions as having the same value as their base
-    const valA = valueFunc(gameA);
-    const valB = valueFunc(gameB);
-    
-    if (valA !== valB) {
-        return valA - valB;
-    }
-    
-    // Same value - sort alphabetically by base name
-    const baseCompare = aBase.localeCompare(bBase);
-    if (baseCompare !== 0) return baseCompare;
-    
-    // Same base name (shouldn't happen if different bases), sort by full name
-    return gameA.name.localeCompare(gameB.name);
-}
-
 async function renderGroupCollection() {
     const container = document.getElementById('group-collection-list');
     
@@ -2477,36 +2421,49 @@ async function renderGroupCollection() {
     
     // Sort based on user preference
     if (sortBy === 'alphabetical') {
-        scored.sort((a, b) => sortWithExpansions(a.game, b.game, (g) => {
-            // For alphabetical, we can't return a number, so we need a different approach
-            // Return 0 and let the final name compare in sortWithExpansions handle it
-            return 0;
-        }));
-        // Since sortWithExpansions uses localeCompare at the end, this will work
+        scored.sort((a, b) => a.game.name.localeCompare(b.game.name));
     } else if (sortBy === 'promotions') {
         scored.sort((a, b) => {
-            // For promotions, sort by score but keep expansions with base games
-            if (b.score === a.score) {
-                // Same promotion count - use expansion grouping
-                return sortWithExpansions(a.game, b.game, (g) => 0);
-            }
-            return b.score - a.score;
+            if (b.score !== a.score) return b.score - a.score;
+            return a.game.name.localeCompare(b.game.name);
         });
     } else if (sortBy === 'rating-high') {
-        scored.sort((a, b) => sortWithExpansions(a.game, b.game, (g) => -(g.average || 0)));
+        scored.sort((a, b) => {
+            const diff = (b.game.average || 0) - (a.game.average || 0);
+            if (diff !== 0) return diff;
+            return a.game.name.localeCompare(b.game.name);
+        });
     } else if (sortBy === 'rank') {
-        scored.sort((a, b) => sortWithExpansions(a.game, b.game, (g) => {
-            const rank = parseInt(g.rank) || 999999;
-            return rank;
-        }));
+        scored.sort((a, b) => {
+            const rankA = parseInt(a.game.rank) || 999999;
+            const rankB = parseInt(b.game.rank) || 999999;
+            if (rankA !== rankB) return rankA - rankB;
+            return a.game.name.localeCompare(b.game.name);
+        });
     } else if (sortBy === 'complexity-high') {
-        scored.sort((a, b) => sortWithExpansions(a.game, b.game, (g) => -(g.complexity || 0)));
+        scored.sort((a, b) => {
+            const diff = (b.game.complexity || 0) - (a.game.complexity || 0);
+            if (diff !== 0) return diff;
+            return a.game.name.localeCompare(b.game.name);
+        });
     } else if (sortBy === 'complexity-low') {
-        scored.sort((a, b) => sortWithExpansions(a.game, b.game, (g) => (g.complexity || 0)));
+        scored.sort((a, b) => {
+            const diff = (a.game.complexity || 0) - (b.game.complexity || 0);
+            if (diff !== 0) return diff;
+            return a.game.name.localeCompare(b.game.name);
+        });
     } else if (sortBy === 'length-short') {
-        scored.sort((a, b) => sortWithExpansions(a.game, b.game, (g) => (g.playingTime || 0)));
+        scored.sort((a, b) => {
+            const diff = (a.game.playingTime || 0) - (b.game.playingTime || 0);
+            if (diff !== 0) return diff;
+            return a.game.name.localeCompare(b.game.name);
+        });
     } else if (sortBy === 'length-long') {
-        scored.sort((a, b) => sortWithExpansions(a.game, b.game, (g) => -(g.playingTime || 0)));
+        scored.sort((a, b) => {
+            const diff = (b.game.playingTime || 0) - (a.game.playingTime || 0);
+            if (diff !== 0) return diff;
+            return a.game.name.localeCompare(b.game.name);
+        });
     }
     
     document.getElementById('group-collection-count-label').textContent = 
@@ -4695,34 +4652,49 @@ async function renderEventCollection() {
     });
     
     if (sortBy === 'alphabetical') {
-        scored.sort((a, b) => sortWithExpansions(a.game, b.game, (g) => {
-            // For alphabetical, return 0 and let the final name compare in sortWithExpansions handle it
-            return 0;
-        }));
+        scored.sort((a, b) => a.game.name.localeCompare(b.game.name));
     } else if (sortBy === 'promotions') {
         scored.sort((a, b) => {
-            // For promotions, sort by score but keep expansions with base games
-            if (b.score === a.score) {
-                // Same promotion count - use expansion grouping
-                return sortWithExpansions(a.game, b.game, (g) => 0);
-            }
-            return b.score - a.score;
+            if (b.score !== a.score) return b.score - a.score;
+            return a.game.name.localeCompare(b.game.name);
         });
     } else if (sortBy === 'rating-high') {
-        scored.sort((a, b) => sortWithExpansions(a.game, b.game, (g) => -(g.average || 0)));
+        scored.sort((a, b) => {
+            const diff = (b.game.average || 0) - (a.game.average || 0);
+            if (diff !== 0) return diff;
+            return a.game.name.localeCompare(b.game.name);
+        });
     } else if (sortBy === 'rank') {
-        scored.sort((a, b) => sortWithExpansions(a.game, b.game, (g) => {
-            const rank = parseInt(g.rank) || 999999;
-            return rank;
-        }));
+        scored.sort((a, b) => {
+            const rankA = parseInt(a.game.rank) || 999999;
+            const rankB = parseInt(b.game.rank) || 999999;
+            if (rankA !== rankB) return rankA - rankB;
+            return a.game.name.localeCompare(b.game.name);
+        });
     } else if (sortBy === 'complexity-high') {
-        scored.sort((a, b) => sortWithExpansions(a.game, b.game, (g) => -(g.complexity || 0)));
+        scored.sort((a, b) => {
+            const diff = (b.game.complexity || 0) - (a.game.complexity || 0);
+            if (diff !== 0) return diff;
+            return a.game.name.localeCompare(b.game.name);
+        });
     } else if (sortBy === 'complexity-low') {
-        scored.sort((a, b) => sortWithExpansions(a.game, b.game, (g) => (g.complexity || 0)));
+        scored.sort((a, b) => {
+            const diff = (a.game.complexity || 0) - (b.game.complexity || 0);
+            if (diff !== 0) return diff;
+            return a.game.name.localeCompare(b.game.name);
+        });
     } else if (sortBy === 'length-short') {
-        scored.sort((a, b) => sortWithExpansions(a.game, b.game, (g) => (g.playingTime || 0)));
+        scored.sort((a, b) => {
+            const diff = (a.game.playingTime || 0) - (b.game.playingTime || 0);
+            if (diff !== 0) return diff;
+            return a.game.name.localeCompare(b.game.name);
+        });
     } else if (sortBy === 'length-long') {
-        scored.sort((a, b) => sortWithExpansions(a.game, b.game, (g) => -(g.playingTime || 0)));
+        scored.sort((a, b) => {
+            const diff = (b.game.playingTime || 0) - (a.game.playingTime || 0);
+            if (diff !== 0) return diff;
+            return a.game.name.localeCompare(b.game.name);
+        });
     }
     
     document.getElementById('event-collection-count-label').textContent = 
