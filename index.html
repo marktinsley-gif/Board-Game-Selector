@@ -3401,9 +3401,14 @@ async function vpContinue() {
         if (!u) continue;
         const username = u.username;
         const cb = document.getElementById('pc-check-' + username);
-        if (!cb || !cb.checked) continue;
-        participants.push(username);
         const gcb = document.getElementById('pc-games-' + username);
+        
+        // Add to participants if their participant checkbox is checked
+        if (cb && cb.checked) {
+            participants.push(username);
+        }
+        
+        // Add their games if their games checkbox is checked (regardless of participant status)
         if (gcb && gcb.checked) {
             includeGamesFrom.push(username);
             // For event votes, use only games being brought to event
@@ -4460,6 +4465,9 @@ async function showProposeGameModal() {
     selectedGameForProposal = null;
     const modal = document.getElementById('propose-game-modal');
     
+    // Show modal first so sliders can render
+    modal.style.display = 'block';
+    
     // Initialize sliders if not already done
     if (!proposeSliders) {
         proposeSliders = {
@@ -4467,11 +4475,6 @@ async function showProposeGameModal() {
             complexity: new RangeSlider('propose-complexity-slider', 'propose-complexity-label', 1, 5, 1, 5, 0.1, (min, max) => `Complexity: ${min.toFixed(1)}-${max.toFixed(1)}`),
             rating: new RangeSlider('propose-rating-slider', 'propose-rating-label', 1, 10, 1, 10, 0.1, (min, max) => `Rating: ${min.toFixed(1)}-${max.toFixed(1)}`)
         };
-    }
-    
-    // Load games into cache if not already loaded
-    if (!proposeGameCache) {
-        await loadProposeGameCache();
     }
     
     // Reset filters
@@ -4483,11 +4486,20 @@ async function showProposeGameModal() {
     proposeSliders.complexity.setValues(1, 5);
     proposeSliders.rating.setValues(1, 10);
     
+    // Load games into cache if not already loaded
+    if (!proposeGameCache) {
+        await loadProposeGameCache();
+    }
+    
+    // Now filter and display
     filterProposeGameList();
-    modal.style.display = 'block';
 }
 
 async function loadProposeGameCache() {
+    // Show loading message
+    const container = document.getElementById('propose-game-list');
+    container.innerHTML = '<p style="color:#666; padding:16px; text-align:center;">Loading games...</p>';
+    
     // Get all unique games from event collection
     const allEventGames = [];
     const seenIds = new Set();
@@ -4519,6 +4531,7 @@ async function loadProposeGameCache() {
 
 function filterProposeGameList() {
     if (!proposeGameCache) return;
+    if (!proposeSliders) return; // Safety check
     
     const container = document.getElementById('propose-game-list');
     const searchTerm = document.getElementById('propose-game-search').value.toLowerCase();
