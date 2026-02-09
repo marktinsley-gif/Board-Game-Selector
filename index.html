@@ -2482,7 +2482,7 @@ async function renderGroupCollection() {
         
         // Make expansions visually smaller
         if (isExpansion) {
-            div.style.cssText = 'opacity: 0.85; transform: scale(0.95); margin-left: 20px; padding: 8px 12px;';
+            div.style.cssText = 'opacity: 0.7; transform: scale(0.85); margin-left: 30px; padding: 6px 10px; background: #f5f5f5; border-left: 3px solid #999;';
         }
         
         let promoteTags = '';
@@ -2500,11 +2500,12 @@ async function renderGroupCollection() {
         
         const imgHtml = `<div class="game-image-placeholder">${getGameInitials(game.name)}</div>`;
         const bggUrl = `https://boardgamegeek.com/boardgame/${game.id}`;
+        const expansionBadge = isExpansion ? ' <span style="background:#999; color:white; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:600; margin-left:6px;">EXPANSION</span>' : '';
         
         div.innerHTML = `
             ${imgHtml}
             <div class="game-info">
-                <div class="game-name"><a href="${bggUrl}" target="_blank" rel="noopener noreferrer" style="color:#667eea; text-decoration:none; font-weight:600;">${game.name}</a> (${game.yearPublished})</div>
+                <div class="game-name"><a href="${bggUrl}" target="_blank" rel="noopener noreferrer" style="color:#667eea; text-decoration:none; font-weight:600;">${game.name}</a> (${game.yearPublished})${expansionBadge}</div>
                 <div class="game-details">${game.minPlayers}–${game.maxPlayers} players • ${game.playingTime} min • Complexity ${game.complexity.toFixed(1)} • Rating ${game.average.toFixed(1)}</div>
                 <div class="game-owners">Owned by: ${(game.owners||[]).join(', ')}</div>
                 ${promoteTags}
@@ -4721,7 +4722,7 @@ async function renderEventCollection() {
         
         // Make expansions visually smaller
         if (isExpansion) {
-            div.style.cssText = 'opacity: 0.85; transform: scale(0.95); margin-left: 20px; padding: 8px 12px;';
+            div.style.cssText = 'opacity: 0.7; transform: scale(0.85); margin-left: 30px; padding: 6px 10px; background: #f5f5f5; border-left: 3px solid #999;';
         }
         
         let promoteTags = '';
@@ -4738,11 +4739,12 @@ async function renderEventCollection() {
         
         const imgHtml = `<div class="game-image-placeholder">${getGameInitials(game.name)}</div>`;
         const bggUrl = `https://boardgamegeek.com/boardgame/${game.id}`;
+        const expansionBadge = isExpansion ? ' <span style="background:#999; color:white; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:600; margin-left:6px;">EXPANSION</span>' : '';
         
         div.innerHTML = `
             ${imgHtml}
             <div class="game-info">
-                <div class="game-name"><a href="${bggUrl}" target="_blank" rel="noopener noreferrer" style="color:#667eea; text-decoration:none; font-weight:600;">${game.name}</a> (${game.yearPublished})</div>
+                <div class="game-name"><a href="${bggUrl}" target="_blank" rel="noopener noreferrer" style="color:#667eea; text-decoration:none; font-weight:600;">${game.name}</a> (${game.yearPublished})${expansionBadge}</div>
                 <div class="game-details">${game.minPlayers}–${game.maxPlayers} players • ${game.playingTime} min • Complexity ${game.complexity.toFixed(1)} • Rating ${game.average.toFixed(1)}</div>
                 <div class="game-owners">Brought by: ${(game.owners||[]).join(', ')}</div>
                 ${promoteTags}
