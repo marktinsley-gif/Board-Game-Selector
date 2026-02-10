@@ -1119,8 +1119,11 @@ button.ghost:hover { background:#667eea; color:white; }
       </div>
     </div>
     
-    <button class="success" onclick="confirmScheduleGame()" style="margin-top:20px;">Schedule Game</button>
-    <button class="secondary" onclick="goBackToEventVoteResult()">Cancel</button>
+    <div style="display:flex; gap:8px; margin-top:20px; flex-wrap:wrap;">
+      <button class="success" onclick="confirmScheduleGame()">Schedule Game</button>
+      <button onclick="proposeGameFromVote()" style="background:#667eea;">Propose Game</button>
+    </div>
+    <button class="secondary" onclick="goBackToEventVoteResult()" style="margin-top:8px;">Cancel</button>
   </div>
 </div>
 
@@ -6577,6 +6580,19 @@ async function confirmScheduleGame() {
     
     const game = currentVote.winner;
     
+    // Check if player count is less than minimum required
+    if (selectedPlayers.length < game.minPlayers) {
+        const proceed = confirm(
+            `Warning: You have ${selectedPlayers.length} player${selectedPlayers.length !== 1 ? 's' : ''} selected, but ${game.name} requires a minimum of ${game.minPlayers} players.\n\n` +
+            `Are you sure you want to schedule this game?\n\n` +
+            `Alternatively, you may wish to PROPOSE the game instead (click Cancel, then Propose Game button).`
+        );
+        
+        if (!proceed) {
+            return;
+        }
+    }
+    
     // Check if open to others
     const openToOthers = document.getElementById('open-to-others').checked;
     let maxPlayers = selectedPlayers.length;
@@ -6609,6 +6625,81 @@ async function confirmScheduleGame() {
     showLoading(false);
     
     alert('Game scheduled!');
+    openEvent(currentEvent.id);
+}
+
+async function proposeGameFromVote() {
+    // Get selected players
+    const selectedPlayers = [];
+    currentVote.participants.forEach(username => {
+        const cb = document.getElementById('sgp-check-' + username);
+        if (cb && cb.checked) selectedPlayers.push(username);
+    });
+    
+    if (selectedPlayers.length === 0) {
+        alert('Please select at least one player');
+        return;
+    }
+    
+    const game = currentVote.winner;
+    
+    // Calculate default minimum: higher of (confirmed players + 1) and game minimum
+    const defaultMin = Math.max(selectedPlayers.length + 1, game.minPlayers);
+    
+    // Ask for minimum players needed
+    const minPlayersInput = prompt(
+        `How many players minimum are needed for ${game.name} to run?\n\n` +
+        `Current confirmed: ${selectedPlayers.length} player${selectedPlayers.length !== 1 ? 's' : ''}\n` +
+        `Game minimum: ${game.minPlayers} players\n` +
+        `Game maximum: ${game.maxPlayers} players`,
+        defaultMin
+    );
+    
+    if (minPlayersInput === null) {
+        // User cancelled
+        return;
+    }
+    
+    const minPlayers = parseInt(minPlayersInput);
+    
+    if (isNaN(minPlayers) || minPlayers < 1) {
+        alert('Please enter a valid minimum player count');
+        return;
+    }
+    
+    if (minPlayers > game.maxPlayers) {
+        alert(`Minimum players cannot exceed the game's maximum of ${game.maxPlayers}`);
+        return;
+    }
+    
+    if (minPlayers <= selectedPlayers.length) {
+        alert(`You already have ${selectedPlayers.length} players, which meets the minimum of ${minPlayers}. Please use "Schedule Game" instead.`);
+        return;
+    }
+    
+    showLoading(true);
+    
+    // Create proposed game
+    if (!currentEvent.proposedGames) {
+        currentEvent.proposedGames = [];
+    }
+    
+    const proposedId = 'proposed_' + Date.now().toString(36);
+    currentEvent.proposedGames.push({
+        id: proposedId,
+        gameId: game.id,
+        game: game,
+        proposedBy: session.username,
+        minPlayers: minPlayers,
+        maxPlayers: game.maxPlayers,
+        players: selectedPlayers,
+        createdAt: new Date().toISOString()
+    });
+    
+    await fsSaveGroup(activeGroup);
+    showLoading(false);
+    
+    alert(`Game proposed! Need ${minPlayers - selectedPlayers.length} more player${minPlayers - selectedPlayers.length !== 1 ? 's' : ''} to run.`);
     openEvent(currentEvent.id);
 }
 
