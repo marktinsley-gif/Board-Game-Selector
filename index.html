@@ -684,6 +684,7 @@ button.ghost:hover { background:#667eea; color:white; }
     <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
       <button onclick="showAddEventAttendees()">Add Group Members</button>
       <button onclick="showAddPlusOne()">Add Plus One</button>
+      <button class="danger" onclick="confirmNoLongerAttending()">No Longer Attending</button>
     </div>
     
     <div id="add-event-attendees-panel" style="display:none; margin-top:16px; padding-top:16px; border-top:2px solid #e0e0e0;">
@@ -734,6 +735,7 @@ button.ghost:hover { background:#667eea; color:white; }
     
     <div class="section">
       <button onclick="goBackToGroup()">Back to Group</button>
+      <button class="danger" onclick="confirmNoLongerAttending()">No Longer Attending</button>
       <button class="danger" onclick="confirmDeleteEvent()">Delete Event</button>
     </div>
   </div>
@@ -745,9 +747,12 @@ button.ghost:hover { background:#667eea; color:white; }
 <div class="page" id="page-event-admin">
   <div class="card">
     <div class="topbar">
-      <span id="event-admin-icon" class="logo" onclick="goToGroupOrHome()">🎲</span>
       <div style="display:flex; align-items:center; gap:8px;">
-        <span id="event-admin-group-name" style="font-size:13px; color:#666;"></span>
+        <span id="event-admin-icon" class="logo" onclick="goToGroupOrHome()">🎲</span>
+        <span id="event-admin-group-name" style="font-weight:600; font-size:15px;"></span>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <button class="secondary" onclick="goBackToEvent()">Back to Event</button>
         <button class="secondary" onclick="doLogout()">Log Out</button>
       </div>
     </div>
@@ -5206,9 +5211,11 @@ async function renderEventAdminAttendees() {
     container.innerHTML = '';
     
     const attendees = currentEvent.attendees || [];
+    const plusOnes = currentEvent.plusOnes || [];
     const eventAdmins = currentEvent.eventAdmins || [];
     const attendeeStatuses = currentEvent.attendeeStatuses || {};
     
+    // Render regular attendees
     for (const username of attendees) {
         const user = await fsGetUser(username);
         const isEventAdmin = eventAdmins.includes(username);
@@ -5243,6 +5250,44 @@ async function renderEventAdminAttendees() {
                 ${!hasLeft && !arrivingLate ? `<button onclick="markAttendeeArrivingLate('${username}')" style="padding:6px 12px; font-size:13px;">Mark Arriving Late</button>` : ''}
                 ${arrivingLate ? `<button onclick="clearLateStatus('${username}')" style="padding:6px 12px; font-size:13px;">Clear Late Status</button>` : ''}
                 ${!isCreator ? `<button class="danger" onclick="removeAttendeeFromEvent('${username}')" style="padding:6px 12px; font-size:13px;">Remove from Event</button>` : ''}
+            </div>
+        `;
+        
+        container.appendChild(div);
+    }
+    
+    // Render plus ones
+    for (const po of plusOnes) {
+        const status = attendeeStatuses[po.id] || 'active';
+        const hasLeft = status === 'left';
+        const arrivingLate = attendeeStatuses[po.id + '_late'];
+        
+        let statusBadge = '';
+        if (hasLeft) {
+            statusBadge = '<span style="background:#dc3545; color:white; padding:2px 6px; border-radius:4px; font-size:11px; margin-left:6px;">LEFT</span>';
+        } else if (arrivingLate) {
+            statusBadge = `<span style="background:#ffc107; color:#333; padding:2px 6px; border-radius:4px; font-size:11px; margin-left:6px;">LATE: ${arrivingLate}</span>`;
+        }
+        
+        const plusOneNum = getPlusOneNumber(po);
+        
+        const div = document.createElement('div');
+        div.className = 'list-item';
+        div.style.flexDirection = 'column';
+        div.style.alignItems = 'flex-start';
+        
+        div.innerHTML = `
+            <div style="width:100%; display:flex; justify-content:space-between; align-items:center;">
+                <div class="list-item-left">
+                    <div class="item-title">${po.name} (Plus One) ${statusBadge}</div>
+                    <div class="item-sub">Added by ${po.addedBy} (+${plusOneNum})</div>
+                </div>
+            </div>
+            <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">
+                ${hasLeft ? `<button onclick="returnAttendee('${po.id}')" style="padding:6px 12px; font-size:13px;">Mark Returned</button>` : `<button onclick="markAttendeeLeft('${po.id}')" style="padding:6px 12px; font-size:13px;">Mark Left</button>`}
+                ${!hasLeft && !arrivingLate ? `<button onclick="markAttendeeArrivingLate('${po.id}')" style="padding:6px 12px; font-size:13px;">Mark Arriving Late</button>` : ''}
+                ${arrivingLate ? `<button onclick="clearLateStatus('${po.id}')" style="padding:6px 12px; font-size:13px;">Clear Late Status</button>` : ''}
+                <button class="danger" onclick="removePlusOneFromEventAdmin('${po.id}')" style="padding:6px 12px; font-size:13px;">Remove Plus One</button>
             </div>
         `;
         
@@ -5369,6 +5414,32 @@ async function removeAttendeeFromEvent(username) {
     
     await renderEventAdminAttendees();
     alert(`${username} has been removed from the event`);
+}
+
+async function removePlusOneFromEventAdmin(plusOneId) {
+    if (!confirm('Remove this plus one from the event?')) return;
+    
+    showLoading(true);
+    
+    // Remove from plus ones list
+    currentEvent.plusOnes = (currentEvent.plusOnes || []).filter(po => po.id !== plusOneId);
+    
+    // Remove from scheduled games
+    const scheduledGames = currentEvent.scheduledGames || {};
+    Object.values(scheduledGames).forEach(sg => {
+        sg.players = sg.players.filter(p => p !== plusOneId);
+    });
+    
+    // Remove from proposed games
+    const proposedGames = currentEvent.proposedGames || [];
+    proposedGames.forEach(pg => {
+        pg.players = pg.players.filter(p => p !== plusOneId);
+    });
+    
+    await fsSaveGroup(activeGroup);
+    showLoading(false);
+    
+    await renderEventAdminAttendees();
 }
 
 async function deleteEventVote(voteId) {
@@ -5995,6 +6066,49 @@ function goBackToEvent() {
     } else {
         goBackToGroup();
     }
+}
+
+async function confirmNoLongerAttending() {
+    if (!confirm('Are you sure you want to remove yourself from this event? You will be removed from all games and votes.')) {
+        return;
+    }
+    
+    showLoading(true);
+    
+    const username = session.username;
+    
+    // Remove from attendees
+    currentEvent.attendees = currentEvent.attendees.filter(a => a !== username);
+    
+    // Remove from attendee games
+    delete currentEvent.attendeeGames[username];
+    
+    // Remove from scheduled games
+    const scheduledGames = currentEvent.scheduledGames || {};
+    Object.values(scheduledGames).forEach(sg => {
+        sg.players = sg.players.filter(p => p !== username);
+    });
+    
+    // Remove from proposed games
+    const proposedGames = currentEvent.proposedGames || [];
+    proposedGames.forEach(pg => {
+        pg.players = pg.players.filter(p => p !== username);
+    });
+    
+    // Remove from votes
+    const votes = currentEvent.votes || {};
+    Object.values(votes).forEach(vote => {
+        vote.participants = vote.participants.filter(p => p !== username);
+    });
+    
+    // Remove all user's plus ones
+    currentEvent.plusOnes = (currentEvent.plusOnes || []).filter(po => po.addedBy !== username);
+    
+    await fsSaveGroup(activeGroup);
+    showLoading(false);
+    
+    alert('You have been removed from this event');
+    goBackToGroup();
 }
 
 async function confirmDeleteEvent() {
@@ -7633,12 +7747,16 @@ function makeIOSClickable(element, callback, options = {}) {
     } = options;
     
     let tapped = false;
+    let touchStartTime = 0;
+    let touchMoved = false;
     let originalBg = '';
     
     element.style.cursor = 'pointer';
     
-    // Touch events for iOS
+    // Touch events for iOS and Android
     element.addEventListener('touchstart', function(e) {
+        touchStartTime = Date.now();
+        touchMoved = false;
         tapped = true;
         if (visualFeedback) {
             originalBg = e.currentTarget.style.backgroundColor;
@@ -7649,8 +7767,21 @@ function makeIOSClickable(element, callback, options = {}) {
         }
     }, { passive: true });
     
+    element.addEventListener('touchmove', function(e) {
+        touchMoved = true;
+        if (visualFeedback) {
+            e.currentTarget.style.backgroundColor = originalBg;
+        }
+    }, { passive: true });
+    
     element.addEventListener('touchend', function(e) {
-        if (tapped) {
+        const touchDuration = Date.now() - touchStartTime;
+        
+        // Only trigger if:
+        // 1. Was tapped
+        // 2. Didn't move (not a scroll)
+        // 3. Touch duration was reasonable (50ms-500ms) to prevent accidental taps
+        if (tapped && !touchMoved && touchDuration >= 50 && touchDuration < 500) {
             e.preventDefault();
             if (visualFeedback) {
                 e.currentTarget.style.backgroundColor = originalBg;
@@ -7659,6 +7790,12 @@ function makeIOSClickable(element, callback, options = {}) {
                 e.stopPropagation();
             }
             callback(e);
+            tapped = false;
+        } else {
+            // Reset visual feedback even if not triggering callback
+            if (visualFeedback) {
+                e.currentTarget.style.backgroundColor = originalBg;
+            }
             tapped = false;
         }
     }, { passive: false });
