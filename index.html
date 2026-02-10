@@ -4442,6 +4442,7 @@ async function renderProposedGames() {
         // Check if user has plus ones in this game
         const myPlusOnesInGame = myPlusOnes.filter(po => pg.players.includes(po.id));
         const hasMyPlusOnes = myPlusOnesInGame.length > 0;
+        const hasAvailablePlusOnes = myPlusOnes.length > myPlusOnesInGame.length;
         
         // Get player display names
         const playerNames = await Promise.all(pg.players.map(async (playerId) => {
@@ -4462,7 +4463,7 @@ async function renderProposedGames() {
             <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
                 ${!isPlayer && spotsAvailable > 0 ? `<button class="success" style="padding:6px 12px; font-size:13px;" onclick="event.stopPropagation(); joinProposedGame('${pg.id}')">Join</button>` : ''}
                 ${isPlayer ? `<button class="secondary" style="padding:6px 12px; font-size:13px;" onclick="event.stopPropagation(); leaveProposedGame('${pg.id}')">Leave</button>` : ''}
-                ${myPlusOnes.length > 0 && !hasMyPlusOnes && spotsAvailable > 0 ? `<button style="padding:6px 12px; font-size:13px;" onclick="event.stopPropagation(); addPlusOneToGame('${pg.id}', 'proposed')">Add Plus One</button>` : ''}
+                ${hasAvailablePlusOnes && spotsAvailable > 0 ? `<button style="padding:6px 12px; font-size:13px;" onclick="event.stopPropagation(); addPlusOneToGame('${pg.id}', 'proposed')">Add Plus One</button>` : ''}
                 ${hasMyPlusOnes ? `<button class="secondary" style="padding:6px 12px; font-size:13px;" onclick="event.stopPropagation(); removePlusOneFromProposed('${pg.id}')">Remove Plus One</button>` : ''}
                 ${isProposer ? `<button class="danger" style="padding:6px 12px; font-size:13px;" onclick="event.stopPropagation(); deleteProposedGame('${pg.id}')">Delete</button>` : ''}
             </div>
@@ -6165,6 +6166,7 @@ async function renderScheduledGames() {
         const myPlusOnes = plusOnes.filter(po => po.addedBy === session.username);
         const myPlusOnesInGame = myPlusOnes.filter(po => playerIds.includes(po.id));
         const hasMyPlusOnes = myPlusOnesInGame.length > 0;
+        const hasAvailablePlusOnes = myPlusOnes.length > myPlusOnesInGame.length;
         
         const isOpen = sg.openToOthers && sg.maxPlayers && playerIds.length < sg.maxPlayers;
         const spotsLeft = sg.maxPlayers ? sg.maxPlayers - playerIds.length : 0;
@@ -6192,7 +6194,7 @@ async function renderScheduledGames() {
             <div style="margin-top:10px; display:flex; gap:6px; flex-wrap:wrap;">
                 ${isOpen && !isPlayer ? `<button class="success" style="padding:5px 10px; font-size:13px; margin:0;" onclick="joinScheduledGame('${sg.id}')">Join Game</button>` : ''}
                 ${isPlayer ? `<button class="secondary" style="padding:5px 10px; font-size:13px; margin:0;" onclick="leaveScheduledGame('${sg.id}')">Leave Game</button>` : ''}
-                ${myPlusOnes.length > 0 && !hasMyPlusOnes && isOpen ? `<button style="padding:5px 10px; font-size:13px; margin:0;" onclick="addPlusOneToGame('${sg.id}', 'scheduled')">Add Plus One</button>` : ''}
+                ${hasAvailablePlusOnes && isOpen ? `<button style="padding:5px 10px; font-size:13px; margin:0;" onclick="addPlusOneToGame('${sg.id}', 'scheduled')">Add Plus One</button>` : ''}
                 ${hasMyPlusOnes ? `<button class="secondary" style="padding:5px 10px; font-size:13px; margin:0;" onclick="removePlusOneFromGame('${sg.id}')">Remove Plus One</button>` : ''}
                 ${isPlayer && isOpen ? `<button style="padding:5px 10px; font-size:13px; margin:0;" onclick="closeScheduledGame('${sg.id}')">Close to Others</button>` : ''}
                 ${isPlayer || hasMyPlusOnes ? `<button class="success" style="padding:5px 10px; font-size:13px; margin:0;" onclick="markGameComplete('${sg.id}')">Mark Complete</button>` : ''}
