@@ -1205,8 +1205,9 @@ button.ghost:hover { background:#667eea; color:white; }
 <div class="loading-overlay" id="loading"><div class="spinner"></div></div>
 
 <!-- Propose Game Modal -->
-<div style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; overflow-y:auto;" id="propose-game-modal">
-  <div style="background:white; max-width:900px; margin:40px auto; border-radius:12px; padding:24px; position:relative;">
+<div style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; overflow-y:auto;" id="propose-game-modal" onclick="closeProposeGameModalBackdrop(event)">
+  <div style="background:white; max-width:900px; margin:40px auto; border-radius:12px; padding:24px; position:relative;" onclick="event.stopPropagation()">
+    <button onclick="hideProposeGameModal()" style="position:absolute; top:16px; right:16px; background:none; border:none; font-size:24px; color:#999; cursor:pointer; padding:4px 8px; line-height:1;">&times;</button>
     <h2>Propose a Game</h2>
     <p class="subtitle">Select a game from the event collection</p>
     
@@ -1289,8 +1290,9 @@ button.ghost:hover { background:#667eea; color:white; }
 </div>
 
 <!-- Configure Proposed Game Modal -->
-<div style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:10000; overflow-y:auto;" id="configure-proposed-game-modal">
-  <div style="background:white; max-width:600px; margin:40px auto; border-radius:12px; padding:24px; position:relative;">
+<div style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:10000; overflow-y:auto;" id="configure-proposed-game-modal" onclick="closeConfigureProposeBackdrop(event)">
+  <div style="background:white; max-width:600px; margin:40px auto; border-radius:12px; padding:24px; position:relative;" onclick="event.stopPropagation()">
+    <button onclick="hideConfigureProposeModal()" style="position:absolute; top:16px; right:16px; background:none; border:none; font-size:24px; color:#999; cursor:pointer; padding:4px 8px; line-height:1;">&times;</button>
     <h2 id="configure-game-title">Configure Game</h2>
     
     <div style="margin:16px 0;">
@@ -1674,7 +1676,7 @@ async function renderHomeGroups(user) {
         );
         const div = document.createElement('div');
         div.className = 'group-card';
-        div.onclick = () => goToGroup(g.code);
+        makeIOSClickable(div, () => goToGroup(g.code));
         div.innerHTML = `
             ${getGroupIconHtml(g, 48)}
             <div style="flex:1; min-width:0;">
@@ -2376,7 +2378,7 @@ function renderGroupVotes() {
     myVotes.forEach(vote => {
         const div = document.createElement('div');
         div.className = 'vote-card';
-        div.onclick = () => openVote(vote.id);
+        makeIOSClickable(div, () => openVote(vote.id));
 
         const gameCount = (vote.filteredGames || []).length;
         const isActive = vote.status === 'active';
@@ -3888,11 +3890,11 @@ function renderVotingList() {
     const backBtnBottom = document.getElementById('vote-voting-back-bottom');
     if (backBtnTop) {
         backBtnTop.textContent = isEventVote ? 'Event' : 'Group';
-        backBtnTop.onclick = isEventVote ? goBackToEvent : goBackToGroup;
+        makeIOSClickable(backBtnTop, isEventVote ? goBackToEvent : goBackToGroup, { visualFeedback: false });
     }
     if (backBtnBottom) {
         backBtnBottom.textContent = isEventVote ? 'Back to Event' : 'Back to Group';
-        backBtnBottom.onclick = isEventVote ? goBackToEvent : goBackToGroup;
+        makeIOSClickable(backBtnBottom, isEventVote ? goBackToEvent : goBackToGroup, { visualFeedback: false });
     }
 
     const scored = voteFilteredGames.map(game => {
@@ -4011,11 +4013,11 @@ function renderResultPage(game, vote, tiedCount) {
     const backBtnBottom = document.getElementById('vote-result-back-bottom');
     if (backBtnTop) {
         backBtnTop.textContent = isEventVote ? 'Event' : 'Group';
-        backBtnTop.onclick = isEventVote ? goBackToEvent : goBackToGroup;
+        makeIOSClickable(backBtnTop, isEventVote ? goBackToEvent : goBackToGroup, { visualFeedback: false });
     }
     if (backBtnBottom) {
         backBtnBottom.textContent = isEventVote ? 'Back to Event' : 'Back to Group';
-        backBtnBottom.onclick = isEventVote ? goBackToEvent : goBackToGroup;
+        makeIOSClickable(backBtnBottom, isEventVote ? goBackToEvent : goBackToGroup, { visualFeedback: false });
     }
     
     const container = document.getElementById('result-winner');
@@ -4102,7 +4104,7 @@ function renderGroupEvents() {
     upcomingEvents.forEach(event => {
         const div = document.createElement('div');
         div.className = 'vote-card';
-        div.onclick = () => openEvent(event.id);
+        makeIOSClickable(div, () => openEvent(event.id));
         
         const isAttending = event.attendees.includes(session.username);
         const eventName = event.name || formatEventDate(event.date);
@@ -4456,7 +4458,7 @@ function renderEventVotes() {
     eventVotes.forEach(vote => {
         const div = document.createElement('div');
         div.className = 'vote-card';
-        div.onclick = () => openEventVote(vote.id);
+        makeIOSClickable(div, () => openEventVote(vote.id));
         
         const gameCount = (vote.filteredGames || []).length;
         const isActive = vote.status === 'active';
@@ -4730,7 +4732,28 @@ function filterProposeGameList() {
         const div = document.createElement('div');
         div.className = 'list-item';
         div.style.cursor = 'pointer';
-        div.onclick = () => selectGameForProposal(game);
+        
+        // iOS-compatible click handling
+        let tapped = false;
+        div.addEventListener('touchstart', function(e) {
+            tapped = true;
+            e.currentTarget.style.backgroundColor = '#f0f0f0';
+        }, { passive: true });
+        
+        div.addEventListener('touchend', function(e) {
+            if (tapped) {
+                e.preventDefault();
+                e.currentTarget.style.backgroundColor = '';
+                selectGameForProposal(game);
+                tapped = false;
+            }
+        }, { passive: false });
+        
+        div.addEventListener('click', function(e) {
+            if (!tapped) {
+                selectGameForProposal(game);
+            }
+        });
         
         if (isExpansion) {
             div.style.cssText += 'opacity: 0.7; transform: scale(0.95); margin-left: 20px; background: #f5f5f5;';
@@ -4751,6 +4774,13 @@ function filterProposeGameList() {
 function hideProposeGameModal() {
     document.getElementById('propose-game-modal').style.display = 'none';
     proposeGameCache = null; // Clear cache when closing
+}
+
+function closeProposeGameModalBackdrop(event) {
+    // Only close if clicking the backdrop itself, not the inner content
+    if (event.target.id === 'propose-game-modal') {
+        hideProposeGameModal();
+    }
 }
 
 async function selectGameForProposal(game) {
@@ -4829,6 +4859,12 @@ async function selectGameForProposal(game) {
 
 function hideConfigureProposeModal() {
     document.getElementById('configure-proposed-game-modal').style.display = 'none';
+}
+
+function closeConfigureProposeBackdrop(event) {
+    if (event.target.id === 'configure-proposed-game-modal') {
+        hideConfigureProposeModal();
+    }
 }
 
 async function saveProposedGame() {
@@ -7502,7 +7538,7 @@ async function viewPastEvents() {
     pastEvents.forEach(event => {
         const div = document.createElement('div');
         div.className = 'vote-card';
-        div.onclick = () => openEvent(event.id);
+        makeIOSClickable(div, () => openEvent(event.id));
         
         const eventName = event.name || formatEventDate(event.date);
         const totalAttendees = event.attendees.length + (event.plusOnes || []).length;
@@ -7584,6 +7620,58 @@ class DualRange {
         this.vals.max = Math.min(this.max, Math.max(max, this.min));
         this.render();
     }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// iOS-COMPATIBLE CLICK HELPER
+// ════════════════════════════════════════════════════════════════════
+function makeIOSClickable(element, callback, options = {}) {
+    const { 
+        visualFeedback = true,
+        feedbackColor = '#f0f0f0',
+        stopPropagation = false 
+    } = options;
+    
+    let tapped = false;
+    let originalBg = '';
+    
+    element.style.cursor = 'pointer';
+    
+    // Touch events for iOS
+    element.addEventListener('touchstart', function(e) {
+        tapped = true;
+        if (visualFeedback) {
+            originalBg = e.currentTarget.style.backgroundColor;
+            e.currentTarget.style.backgroundColor = feedbackColor;
+        }
+        if (stopPropagation) {
+            e.stopPropagation();
+        }
+    }, { passive: true });
+    
+    element.addEventListener('touchend', function(e) {
+        if (tapped) {
+            e.preventDefault();
+            if (visualFeedback) {
+                e.currentTarget.style.backgroundColor = originalBg;
+            }
+            if (stopPropagation) {
+                e.stopPropagation();
+            }
+            callback(e);
+            tapped = false;
+        }
+    }, { passive: false });
+    
+    // Click events for desktop
+    element.addEventListener('click', function(e) {
+        if (!tapped) {
+            if (stopPropagation) {
+                e.stopPropagation();
+            }
+            callback(e);
+        }
+    });
 }
 
 // ════════════════════════════════════════════════════════════════════
