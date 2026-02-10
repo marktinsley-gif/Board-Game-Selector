@@ -1185,8 +1185,12 @@ button.ghost:hover { background:#667eea; color:white; }
     <div style="margin-bottom:16px;">
       <div style="display:flex; align-items:center; gap:16px; margin-bottom:8px;">
         <div style="flex:1;">
-          <label class="range-label" id="propose-player-label">Player Count: 1-10</label>
-          <div class="range-slider" id="propose-player-slider"></div>
+          <div class="slider-label"><label style="margin:0;">Player Count Range</label><span id="propose-player-label">1 – 10</span></div>
+          <div class="dual-range" id="propose-player-slider">
+            <div class="dual-range-track"><div class="dual-range-selected"></div></div>
+            <div class="dual-range-thumb dual-range-thumb-min"></div>
+            <div class="dual-range-thumb dual-range-thumb-max"></div>
+          </div>
         </div>
       </div>
       <div class="checkbox-row" style="margin:8px 0 0 0;">
@@ -1198,12 +1202,20 @@ button.ghost:hover { background:#667eea; color:white; }
     <!-- Complexity and Rating Filters -->
     <div style="display:flex; gap:16px; margin-bottom:16px; flex-wrap:wrap;">
       <div style="flex:1; min-width:200px;">
-        <label class="range-label" id="propose-complexity-label">Complexity: 1.0-5.0</label>
-        <div class="range-slider" id="propose-complexity-slider"></div>
+        <div class="slider-label"><label style="margin:0;">Complexity</label><span id="propose-complexity-label">1.0 – 5.0</span></div>
+        <div class="dual-range" id="propose-complexity-slider">
+          <div class="dual-range-track"><div class="dual-range-selected"></div></div>
+          <div class="dual-range-thumb dual-range-thumb-min"></div>
+          <div class="dual-range-thumb dual-range-thumb-max"></div>
+        </div>
       </div>
       <div style="flex:1; min-width:200px;">
-        <label class="range-label" id="propose-rating-label">Rating: 1.0-10.0</label>
-        <div class="range-slider" id="propose-rating-slider"></div>
+        <div class="slider-label"><label style="margin:0;">Rating</label><span id="propose-rating-label">1.0 – 10.0</span></div>
+        <div class="dual-range" id="propose-rating-slider">
+          <div class="dual-range-track"><div class="dual-range-selected"></div></div>
+          <div class="dual-range-thumb dual-range-thumb-min"></div>
+          <div class="dual-range-thumb dual-range-thumb-max"></div>
+        </div>
       </div>
     </div>
     
@@ -4471,9 +4483,24 @@ async function showProposeGameModal() {
     // Initialize sliders if not already done
     if (!proposeSliders) {
         proposeSliders = {
-            playerCount: new RangeSlider('propose-player-slider', 'propose-player-label', 1, 10, 1, 10, 1, (min, max) => `Player Count: ${min}-${max}`),
-            complexity: new RangeSlider('propose-complexity-slider', 'propose-complexity-label', 1, 5, 1, 5, 0.1, (min, max) => `Complexity: ${min.toFixed(1)}-${max.toFixed(1)}`),
-            rating: new RangeSlider('propose-rating-slider', 'propose-rating-label', 1, 10, 1, 10, 0.1, (min, max) => `Rating: ${min.toFixed(1)}-${max.toFixed(1)}`)
+            playerCount: new DualRange('propose-player-slider', { 
+                min:1, max:10, step:1, minVal:1, maxVal:10, 
+                labelEl:'propose-player-label', 
+                fmt: (a,b) => a + ' – ' + b,
+                onChange: () => filterProposeGameList()
+            }),
+            complexity: new DualRange('propose-complexity-slider', { 
+                min:1, max:5, step:0.1, minVal:1, maxVal:5, 
+                labelEl:'propose-complexity-label', 
+                fmt: (a,b) => a.toFixed(1) + ' – ' + b.toFixed(1),
+                onChange: () => filterProposeGameList()
+            }),
+            rating: new DualRange('propose-rating-slider', { 
+                min:1, max:10, step:0.1, minVal:1, maxVal:10, 
+                labelEl:'propose-rating-label', 
+                fmt: (a,b) => a.toFixed(1) + ' – ' + b.toFixed(1),
+                onChange: () => filterProposeGameList()
+            })
         };
     }
     
@@ -6717,12 +6744,13 @@ async function viewPastEvents() {
 // DUAL-RANGE SLIDER
 // ════════════════════════════════════════════════════════════════════
 class DualRange {
-    constructor(containerId, { min, max, step, minVal, maxVal, labelEl, fmt }) {
+    constructor(containerId, { min, max, step, minVal, maxVal, labelEl, fmt, onChange }) {
         this.el = document.getElementById(containerId);
         this.min = min; this.max = max; this.step = step;
         this.vals = { min: minVal, max: maxVal };
         this.labelEl = document.getElementById(labelEl);
         this.fmt = fmt;
+        this.onChange = onChange;
 
         this.track = this.el.querySelector('.dual-range-track');
         this.sel   = this.el.querySelector('.dual-range-selected');
@@ -6754,7 +6782,10 @@ class DualRange {
         else this.vals.max = Math.min(this.max, Math.max(raw, this.vals.min));
         this.render();
     }
-    end() { this.dragging = null; }
+    end() { 
+        this.dragging = null;
+        if (this.onChange) this.onChange();
+    }
     render() {
         const range = this.max - this.min;
         const minPct = ((this.vals.min - this.min) / range) * 100;
