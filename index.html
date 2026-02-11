@@ -7869,6 +7869,39 @@ function makeIOSClickable(element, callback, options = {}) {
     bindTab('tab-login', 'login');
     bindTab('tab-register', 'register');
 
+    // Wait for DOM to be ready, then bind login/register buttons
+    document.addEventListener('DOMContentLoaded', function() {
+        // Login button
+        var loginBtn = document.querySelector('#login-form button');
+        if (loginBtn) {
+            var loginTapped = false;
+            loginBtn.addEventListener('touchend', function(e) {
+                e.preventDefault();
+                loginTapped = true;
+                doLogin();
+            }, { passive: false });
+            loginBtn.addEventListener('click', function(e) {
+                if (loginTapped) { loginTapped = false; return; }
+                doLogin();
+            });
+        }
+        
+        // Register button  
+        var regBtn = document.querySelector('#register-form button[onclick*="doRegister"]');
+        if (regBtn) {
+            var regTapped = false;
+            regBtn.addEventListener('touchend', function(e) {
+                e.preventDefault();
+                regTapped = true;
+                doRegister();
+            }, { passive: false });
+            regBtn.addEventListener('click', function(e) {
+                if (regTapped) { regTapped = false; return; }
+                doRegister();
+            });
+        }
+    });
+
     // Handle browser back/forward buttons
     window.addEventListener('popstate', function(event) {
         if (event.state && event.state.page) {
