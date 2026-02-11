@@ -56,6 +56,8 @@ button {
     background:#667eea; color:white; border:none; padding:10px 20px;
     border-radius:8px; font-size:15px; font-weight:600; cursor:pointer;
     transition:background 0.2s; margin-right:8px; margin-bottom:8px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(0,0,0,0.1);
 }
 button:hover { background:#5568d3; }
 button:disabled { background:#ccc; cursor:not-allowed; }
@@ -282,7 +284,7 @@ button.ghost:hover { background:#667eea; color:white; }
         <input type="text" id="login-username" placeholder="your username" autocomplete="off">
         <label for="login-password">Password</label>
         <input type="password" id="login-password" placeholder="••••••••" autocomplete="off">
-        <button id="login-btn" style="width:100%; margin:8px 0;">Log In</button>
+        <button id="login-btn" ontouchend="event.preventDefault(); doLogin();" onclick="doLogin();" style="width:100%; margin:8px 0;">Log In</button>
       </div>
 
       <div id="register-form" style="display:none;">
@@ -296,7 +298,7 @@ button.ghost:hover { background:#667eea; color:white; }
         <input type="password" id="reg-password" placeholder="••••••••" autocomplete="off">
         <label for="reg-password2">Confirm Password</label>
         <input type="password" id="reg-password2" placeholder="••••••••" autocomplete="off">
-        <button type="button" id="register-btn" style="width:100%; margin:8px 0;">Create Account</button>
+        <button type="button" id="register-btn" ontouchend="event.preventDefault(); doRegister();" onclick="doRegister();" style="width:100%; margin:8px 0;">Create Account</button>
       </div>
     </div>
   </div>
@@ -7869,34 +7871,7 @@ function makeIOSClickable(element, callback, options = {}) {
     bindTab('tab-login', 'login');
     bindTab('tab-register', 'register');
 
-    // Bind login/register buttons directly (DOM is ready since script is at end of body)
-    var loginBtn = document.getElementById('login-btn');
-    if (loginBtn) {
-        var loginTapped = false;
-        loginBtn.addEventListener('touchend', function(e) {
-            e.preventDefault();
-            loginTapped = true;
-            doLogin();
-        }, { passive: false });
-        loginBtn.addEventListener('click', function(e) {
-            if (loginTapped) { loginTapped = false; return; }
-            doLogin();
-        });
-    }
-    
-    var regBtn = document.getElementById('register-btn');
-    if (regBtn) {
-        var regTapped = false;
-        regBtn.addEventListener('touchend', function(e) {
-            e.preventDefault();
-            regTapped = true;
-            doRegister();
-        }, { passive: false });
-        regBtn.addEventListener('click', function(e) {
-            if (regTapped) { regTapped = false; return; }
-            doRegister();
-        });
-    }
+    // Login and register buttons now use inline ontouchend handlers
 
     // Handle browser back/forward buttons
     window.addEventListener('popstate', function(event) {
