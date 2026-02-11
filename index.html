@@ -7749,6 +7749,8 @@ function makeIOSClickable(element, callback, options = {}) {
     let tapped = false;
     let touchStartTime = 0;
     let touchMoved = false;
+    let touchStartX = 0;
+    let touchStartY = 0;
     let originalBg = '';
     
     element.style.cursor = 'pointer';
@@ -7758,6 +7760,12 @@ function makeIOSClickable(element, callback, options = {}) {
         touchStartTime = Date.now();
         touchMoved = false;
         tapped = true;
+        
+        // Record starting position
+        const touch = e.touches[0];
+        touchStartX = touch.clientX;
+        touchStartY = touch.clientY;
+        
         if (visualFeedback) {
             originalBg = e.currentTarget.style.backgroundColor;
             e.currentTarget.style.backgroundColor = feedbackColor;
@@ -7768,9 +7776,16 @@ function makeIOSClickable(element, callback, options = {}) {
     }, { passive: true });
     
     element.addEventListener('touchmove', function(e) {
-        touchMoved = true;
-        if (visualFeedback) {
-            e.currentTarget.style.backgroundColor = originalBg;
+        // Check if moved more than 10 pixels in any direction
+        const touch = e.touches[0];
+        const deltaX = Math.abs(touch.clientX - touchStartX);
+        const deltaY = Math.abs(touch.clientY - touchStartY);
+        
+        if (deltaX > 10 || deltaY > 10) {
+            touchMoved = true;
+            if (visualFeedback) {
+                e.currentTarget.style.backgroundColor = originalBg;
+            }
         }
     }, { passive: true });
     
@@ -7779,9 +7794,9 @@ function makeIOSClickable(element, callback, options = {}) {
         
         // Only trigger if:
         // 1. Was tapped
-        // 2. Didn't move (not a scroll)
-        // 3. Touch duration was reasonable (50ms-500ms) to prevent accidental taps
-        if (tapped && !touchMoved && touchDuration >= 50 && touchDuration < 500) {
+        // 2. Didn't move more than 10px (not a scroll/swipe)
+        // 3. Touch duration was reasonable (150ms-1000ms) - increased minimum for less sensitivity
+        if (tapped && !touchMoved && touchDuration >= 150 && touchDuration < 1000) {
             e.preventDefault();
             if (visualFeedback) {
                 e.currentTarget.style.backgroundColor = originalBg;
