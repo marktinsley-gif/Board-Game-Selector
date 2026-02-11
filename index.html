@@ -56,8 +56,6 @@ button {
     background:#667eea; color:white; border:none; padding:10px 20px;
     border-radius:8px; font-size:15px; font-weight:600; cursor:pointer;
     transition:background 0.2s; margin-right:8px; margin-bottom:8px;
-    touch-action: manipulation;
-    -webkit-tap-highlight-color: rgba(0,0,0,0.1);
 }
 button:hover { background:#5568d3; }
 button:disabled { background:#ccc; cursor:not-allowed; }
@@ -284,7 +282,7 @@ button.ghost:hover { background:#667eea; color:white; }
         <input type="text" id="login-username" placeholder="your username" autocomplete="off">
         <label for="login-password">Password</label>
         <input type="password" id="login-password" placeholder="••••••••" autocomplete="off">
-        <button id="login-btn" ontouchend="event.preventDefault(); doLogin();" onclick="doLogin();" style="width:100%; margin:8px 0;">Log In</button>
+        <button onclick="doLogin()" style="width:100%; margin:8px 0;">Log In</button>
       </div>
 
       <div id="register-form" style="display:none;">
@@ -298,7 +296,7 @@ button.ghost:hover { background:#667eea; color:white; }
         <input type="password" id="reg-password" placeholder="••••••••" autocomplete="off">
         <label for="reg-password2">Confirm Password</label>
         <input type="password" id="reg-password2" placeholder="••••••••" autocomplete="off">
-        <button type="button" id="register-btn" ontouchend="event.preventDefault(); doRegister();" onclick="doRegister();" style="width:100%; margin:8px 0;">Create Account</button>
+        <button type="button" onclick="doRegister()" style="width:100%; margin:8px 0;">Create Account</button>
       </div>
     </div>
   </div>
@@ -686,7 +684,6 @@ button.ghost:hover { background:#667eea; color:white; }
     <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
       <button onclick="showAddEventAttendees()">Add Group Members</button>
       <button onclick="showAddPlusOne()">Add Plus One</button>
-      <button class="danger" onclick="confirmNoLongerAttending()">No Longer Attending</button>
     </div>
     
     <div id="add-event-attendees-panel" style="display:none; margin-top:16px; padding-top:16px; border-top:2px solid #e0e0e0;">
@@ -707,21 +704,21 @@ button.ghost:hover { background:#667eea; color:white; }
     
     <div class="section">
       <h3>Event Collection</h3>
-      <p style="font-size:14px; color:#555; margin-bottom:12px; line-height:1.5;">See which games attendees are bringing and promote games you want to play. Each attendee can also select which games from their collection they're bringing to the event by clicking on Manage My Games.</p>
+      <p style="font-size:14px; color:#555; margin-bottom:12px; line-height:1.5;">Manage which games attendees are bringing and vote on games to play. Each attendee can select which games from their collection they're bringing to the event.</p>
       <button onclick="viewEventCollection()">View Event Collection</button>
       <button onclick="manageMyEventGames()">Manage My Games</button>
     </div>
     
     <div class="section">
       <h3>Scheduled Games</h3>
-      <p style="font-size:14px; color:#555; margin-bottom:12px; line-height:1.5;">Games that have been confirmed and scheduled with specific players. You can join scheduled games that have open spaces.</p>
+      <p style="font-size:14px; color:#555; margin-bottom:12px; line-height:1.5;">Games that have been confirmed and scheduled with specific players.</p>
       <div id="scheduled-games-list"></div>
       <button class="secondary" onclick="viewPlayedGames()" style="margin-top:10px;">See Played Games</button>
     </div>
     
     <div class="section">
       <h3>Proposed Games and Votes</h3>
-      <p style="font-size:14px; color:#555; margin-bottom:12px; line-height:1.5;">Propose games to play or create votes using games attendees are bringing. You can browse the list of proposed games below. Joining a proposed game will help to get it scheduled.</p>
+      <p style="font-size:14px; color:#555; margin-bottom:12px; line-height:1.5;">Propose games to play or create votes using games attendees are bringing.</p>
       <div style="display:flex; gap:8px; margin-bottom:16px;">
         <button class="success" onclick="showProposeGameModal()">+ Propose a Game</button>
         <button class="success" onclick="startNewEventVote()">+ Start a New Vote</button>
@@ -730,65 +727,9 @@ button.ghost:hover { background:#667eea; color:white; }
       <div id="event-votes"></div>
     </div>
     
-    <div class="section" id="event-admin-section" style="display:none;">
-      <h3>Event Admin</h3>
-      <button onclick="openEventAdminPanel()">Manage Event Settings</button>
-    </div>
-    
     <div class="section">
       <button onclick="goBackToGroup()">Back to Group</button>
-      <button class="danger" onclick="confirmNoLongerAttending()">No Longer Attending</button>
       <button class="danger" onclick="confirmDeleteEvent()">Delete Event</button>
-    </div>
-  </div>
-</div>
-
-<!-- ════════════════════════════════════════════════════════════
-     PAGE: EVENT ADMIN
-     ════════════════════════════════════════════════════════════ -->
-<div class="page" id="page-event-admin">
-  <div class="card">
-    <div class="topbar">
-      <div style="display:flex; align-items:center; gap:8px;">
-        <span id="event-admin-icon" class="logo" onclick="goToGroupOrHome()">🎲</span>
-        <span id="event-admin-group-name" style="font-weight:600; font-size:15px;"></span>
-      </div>
-      <div style="display:flex; align-items:center; gap:8px;">
-        <button class="secondary" onclick="goBackToEvent()">Back to Event</button>
-        <button class="secondary" onclick="doLogout()">Log Out</button>
-      </div>
-    </div>
-    
-    <h2>Event Admin</h2>
-    <p class="subtitle" id="event-admin-subtitle"></p>
-    
-    <div class="section">
-      <h3>Manage Attendees</h3>
-      <div id="event-admin-attendees"></div>
-    </div>
-    
-    <div class="section">
-      <h3>Scheduled Games</h3>
-      <div id="event-admin-scheduled-games"></div>
-    </div>
-    
-    <div class="section">
-      <h3>Proposed Games</h3>
-      <div id="event-admin-proposed-games"></div>
-    </div>
-    
-    <div class="section">
-      <h3>Active Votes</h3>
-      <div id="event-admin-active-votes"></div>
-    </div>
-    
-    <div class="section">
-      <h3>Past Votes</h3>
-      <div id="event-admin-past-votes"></div>
-    </div>
-    
-    <div class="section">
-      <button onclick="goBackToEvent()">Back to Event</button>
     </div>
   </div>
 </div>
@@ -1212,16 +1153,10 @@ button.ghost:hover { background:#667eea; color:white; }
 <div class="loading-overlay" id="loading"><div class="spinner"></div></div>
 
 <!-- Propose Game Modal -->
-<div style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; overflow-y:auto;" id="propose-game-modal" onclick="closeProposeGameModalBackdrop(event)">
-  <div style="background:white; max-width:900px; margin:40px auto; border-radius:12px; padding:24px; position:relative;" onclick="event.stopPropagation()">
-    <button onclick="hideProposeGameModal()" style="position:absolute; top:16px; right:16px; background:none; border:none; font-size:24px; color:#999; cursor:pointer; padding:4px 8px; line-height:1;">&times;</button>
+<div style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; overflow-y:auto;" id="propose-game-modal">
+  <div style="background:white; max-width:900px; margin:40px auto; border-radius:12px; padding:24px; position:relative;">
     <h2>Propose a Game</h2>
     <p class="subtitle">Select a game from the event collection</p>
-    
-    <!-- Custom Game Option -->
-    <div style="margin:12px 0;">
-      <button onclick="proposeCustomGame()" style="background:#9333ea; color:white; padding:8px 16px; font-size:13px;">📝 Propose Game Not in Collection</button>
-    </div>
     
     <!-- Search Bar -->
     <div style="margin:16px 0;">
@@ -1297,9 +1232,8 @@ button.ghost:hover { background:#667eea; color:white; }
 </div>
 
 <!-- Configure Proposed Game Modal -->
-<div style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:10000; overflow-y:auto;" id="configure-proposed-game-modal" onclick="closeConfigureProposeBackdrop(event)">
-  <div style="background:white; max-width:600px; margin:40px auto; border-radius:12px; padding:24px; position:relative;" onclick="event.stopPropagation()">
-    <button onclick="hideConfigureProposeModal()" style="position:absolute; top:16px; right:16px; background:none; border:none; font-size:24px; color:#999; cursor:pointer; padding:4px 8px; line-height:1;">&times;</button>
+<div style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:10000; overflow-y:auto;" id="configure-proposed-game-modal">
+  <div style="background:white; max-width:600px; margin:40px auto; border-radius:12px; padding:24px; position:relative;">
     <h2 id="configure-game-title">Configure Game</h2>
     
     <div style="margin:16px 0;">
@@ -1683,7 +1617,7 @@ async function renderHomeGroups(user) {
         );
         const div = document.createElement('div');
         div.className = 'group-card';
-        makeIOSClickable(div, () => goToGroup(g.code));
+        div.onclick = () => goToGroup(g.code);
         div.innerHTML = `
             ${getGroupIconHtml(g, 48)}
             <div style="flex:1; min-width:0;">
@@ -2385,7 +2319,7 @@ function renderGroupVotes() {
     myVotes.forEach(vote => {
         const div = document.createElement('div');
         div.className = 'vote-card';
-        makeIOSClickable(div, () => openVote(vote.id));
+        div.onclick = () => openVote(vote.id);
 
         const gameCount = (vote.filteredGames || []).length;
         const isActive = vote.status === 'active';
@@ -3897,11 +3831,11 @@ function renderVotingList() {
     const backBtnBottom = document.getElementById('vote-voting-back-bottom');
     if (backBtnTop) {
         backBtnTop.textContent = isEventVote ? 'Event' : 'Group';
-        makeIOSClickable(backBtnTop, isEventVote ? goBackToEvent : goBackToGroup, { visualFeedback: false });
+        backBtnTop.onclick = isEventVote ? goBackToEvent : goBackToGroup;
     }
     if (backBtnBottom) {
         backBtnBottom.textContent = isEventVote ? 'Back to Event' : 'Back to Group';
-        makeIOSClickable(backBtnBottom, isEventVote ? goBackToEvent : goBackToGroup, { visualFeedback: false });
+        backBtnBottom.onclick = isEventVote ? goBackToEvent : goBackToGroup;
     }
 
     const scored = voteFilteredGames.map(game => {
@@ -4020,11 +3954,11 @@ function renderResultPage(game, vote, tiedCount) {
     const backBtnBottom = document.getElementById('vote-result-back-bottom');
     if (backBtnTop) {
         backBtnTop.textContent = isEventVote ? 'Event' : 'Group';
-        makeIOSClickable(backBtnTop, isEventVote ? goBackToEvent : goBackToGroup, { visualFeedback: false });
+        backBtnTop.onclick = isEventVote ? goBackToEvent : goBackToGroup;
     }
     if (backBtnBottom) {
         backBtnBottom.textContent = isEventVote ? 'Back to Event' : 'Back to Group';
-        makeIOSClickable(backBtnBottom, isEventVote ? goBackToEvent : goBackToGroup, { visualFeedback: false });
+        backBtnBottom.onclick = isEventVote ? goBackToEvent : goBackToGroup;
     }
     
     const container = document.getElementById('result-winner');
@@ -4111,7 +4045,7 @@ function renderGroupEvents() {
     upcomingEvents.forEach(event => {
         const div = document.createElement('div');
         div.className = 'vote-card';
-        makeIOSClickable(div, () => openEvent(event.id));
+        div.onclick = () => openEvent(event.id);
         
         const isAttending = event.attendees.includes(session.username);
         const eventName = event.name || formatEventDate(event.date);
@@ -4305,13 +4239,8 @@ async function openEvent(eventId) {
     
     await renderEventAttendees();
     renderScheduledGames();
-    await renderProposedGames();
+    renderProposedGames();
     renderEventVotes();
-    
-    // Show event admin section for event creator or event admins
-    const eventAdmins = event.eventAdmins || [];
-    const isEventAdmin = event.createdBy === session.username || eventAdmins.includes(session.username);
-    document.getElementById('event-admin-section').style.display = isEventAdmin ? 'block' : 'none';
     
     goToPage('page-event-details');
 }
@@ -4465,7 +4394,7 @@ function renderEventVotes() {
     eventVotes.forEach(vote => {
         const div = document.createElement('div');
         div.className = 'vote-card';
-        makeIOSClickable(div, () => openEventVote(vote.id));
+        div.onclick = () => openEventVote(vote.id);
         
         const gameCount = (vote.filteredGames || []).length;
         const isActive = vote.status === 'active';
@@ -4738,9 +4667,8 @@ function filterProposeGameList() {
         
         const div = document.createElement('div');
         div.className = 'list-item';
-        
-        // Use makeIOSClickable with scrollable list option
-        makeIOSClickable(div, () => selectGameForProposal(game), { inScrollableList: true });
+        div.style.cursor = 'pointer';
+        div.onclick = () => selectGameForProposal(game);
         
         if (isExpansion) {
             div.style.cssText += 'opacity: 0.7; transform: scale(0.95); margin-left: 20px; background: #f5f5f5;';
@@ -4761,13 +4689,6 @@ function filterProposeGameList() {
 function hideProposeGameModal() {
     document.getElementById('propose-game-modal').style.display = 'none';
     proposeGameCache = null; // Clear cache when closing
-}
-
-function closeProposeGameModalBackdrop(event) {
-    // Only close if clicking the backdrop itself, not the inner content
-    if (event.target.id === 'propose-game-modal') {
-        hideProposeGameModal();
-    }
 }
 
 async function selectGameForProposal(game) {
@@ -4846,12 +4767,6 @@ async function selectGameForProposal(game) {
 
 function hideConfigureProposeModal() {
     document.getElementById('configure-proposed-game-modal').style.display = 'none';
-}
-
-function closeConfigureProposeBackdrop(event) {
-    if (event.target.id === 'configure-proposed-game-modal') {
-        hideConfigureProposeModal();
-    }
 }
 
 async function saveProposedGame() {
@@ -5034,718 +4949,12 @@ async function deleteProposedGame(proposedId) {
     await renderProposedGames();
 }
 
-async function proposeCustomGame() {
-    hideProposeGameModal();
-    
-    const gameName = prompt('Enter the name of the game you want to propose:');
-    if (!gameName || !gameName.trim()) return;
-    
-    const minPlayersInput = prompt(`Minimum players needed for ${gameName}:`);
-    if (!minPlayersInput) return;
-    const minPlayers = parseInt(minPlayersInput);
-    if (isNaN(minPlayers) || minPlayers < 1) {
-        alert('Please enter a valid minimum player count');
-        return;
-    }
-    
-    const maxPlayersInput = prompt(`Maximum players for ${gameName}:`);
-    if (!maxPlayersInput) return;
-    const maxPlayers = parseInt(maxPlayersInput);
-    if (isNaN(maxPlayers) || maxPlayers < minPlayers) {
-        alert('Maximum must be greater than or equal to minimum');
-        return;
-    }
-    
-    // Show participant selection
-    const attendees = currentEvent.attendees || [];
-    const plusOnes = currentEvent.plusOnes || [];
-    
-    let participantHtml = '<div style="max-height:300px; overflow-y:auto;">';
-    
-    for (const username of attendees) {
-        const user = await fsGetUser(username);
-        const displayName = user.displayName || username;
-        participantHtml += `
-            <div style="padding:8px; border-bottom:1px solid #eee;">
-                <label style="display:flex; align-items:center; cursor:pointer;">
-                    <input type="checkbox" id="custom-check-${username}" style="margin-right:8px;">
-                    <span>${displayName}</span>
-                </label>
-            </div>
-        `;
-    }
-    
-    for (const po of plusOnes) {
-        participantHtml += `
-            <div style="padding:8px; border-bottom:1px solid #eee;">
-                <label style="display:flex; align-items:center; cursor:pointer;">
-                    <input type="checkbox" id="custom-check-${po.id}" style="margin-right:8px;">
-                    <span>${po.name}</span>
-                </label>
-            </div>
-        `;
-    }
-    
-    participantHtml += '</div>';
-    
-    // Create modal for participant selection
-    const modal = document.createElement('div');
-    modal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:10000; display:flex; align-items:center; justify-content:center;';
-    modal.innerHTML = `
-        <div style="background:white; max-width:500px; border-radius:12px; padding:24px; max-height:80vh; overflow-y:auto;">
-            <h3>Select Initial Players for ${gameName}</h3>
-            <p style="font-size:13px; color:#666; margin-bottom:12px;">Check the players who have already agreed to play</p>
-            ${participantHtml}
-            <div style="display:flex; gap:8px; margin-top:16px;">
-                <button id="custom-confirm-btn">Confirm</button>
-                <button class="secondary" id="custom-cancel-btn">Cancel</button>
-            </div>
-        </div>
-    `;
-    
-    document.body.appendChild(modal);
-    
-    document.getElementById('custom-confirm-btn').onclick = async () => {
-        const selectedPlayers = [];
-        attendees.forEach(username => {
-            const cb = document.getElementById('custom-check-' + username);
-            if (cb && cb.checked) selectedPlayers.push(username);
-        });
-        plusOnes.forEach(po => {
-            const cb = document.getElementById('custom-check-' + po.id);
-            if (cb && cb.checked) selectedPlayers.push(po.id);
-        });
-        
-        showLoading(true);
-        
-        // Create custom game object
-        const customGame = {
-            id: 'custom_' + Date.now().toString(36),
-            name: gameName.trim(),
-            minPlayers: minPlayers,
-            maxPlayers: maxPlayers,
-            playingTime: 0,
-            complexity: 0,
-            average: 0,
-            yearPublished: new Date().getFullYear(),
-            itemType: 'custom'
-        };
-        
-        // Create proposed game
-        if (!currentEvent.proposedGames) {
-            currentEvent.proposedGames = [];
-        }
-        
-        const proposedId = 'proposed_' + Date.now().toString(36);
-        currentEvent.proposedGames.push({
-            id: proposedId,
-            gameId: customGame.id,
-            game: customGame,
-            proposedBy: session.username,
-            minPlayers: minPlayers,
-            maxPlayers: maxPlayers,
-            players: selectedPlayers,
-            createdAt: new Date().toISOString()
-        });
-        
-        await fsSaveGroup(activeGroup);
-        showLoading(false);
-        
-        modal.remove();
-        await renderProposedGames();
-        alert('Custom game proposed!');
-    };
-    
-    document.getElementById('custom-cancel-btn').onclick = () => {
-        modal.remove();
-    };
-}
-
-async function openEventAdminPanel() {
-    showLoading(true);
-    
-    const iconEl = document.getElementById('event-admin-icon');
-    if (activeGroup.groupPhoto) {
-        iconEl.innerHTML = `<img src="${activeGroup.groupPhoto}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;" alt="Group">`;
-        iconEl.className = '';
-    } else {
-        iconEl.textContent = '🎲';
-        iconEl.className = 'logo';
-    }
-    
-    // Set group name
-    document.getElementById('event-admin-group-name').textContent = activeGroup.name;
-    
-    const eventName = currentEvent.name || formatEventDate(currentEvent.date);
-    document.getElementById('event-admin-subtitle').textContent = eventName;
-    
-    await renderEventAdminAttendees();
-    await renderEventAdminScheduledGames();
-    await renderEventAdminProposedGames();
-    renderEventAdminVotes();
-    
-    showLoading(false);
-    goToPage('page-event-admin');
-}
-
-async function renderEventAdminAttendees() {
-    const container = document.getElementById('event-admin-attendees');
-    container.innerHTML = '';
-    
-    const attendees = currentEvent.attendees || [];
-    const plusOnes = currentEvent.plusOnes || [];
-    const eventAdmins = currentEvent.eventAdmins || [];
-    const attendeeStatuses = currentEvent.attendeeStatuses || {};
-    
-    // Render regular attendees
-    for (const username of attendees) {
-        const user = await fsGetUser(username);
-        const isEventAdmin = eventAdmins.includes(username);
-        const isCreator = currentEvent.createdBy === username;
-        const status = attendeeStatuses[username] || 'active';
-        const hasLeft = status === 'left';
-        const arrivingLate = attendeeStatuses[username + '_late'];
-        
-        let statusBadge = '';
-        if (hasLeft) {
-            statusBadge = '<span style="background:#dc3545; color:white; padding:2px 6px; border-radius:4px; font-size:11px; margin-left:6px;">LEFT</span>';
-        } else if (arrivingLate) {
-            statusBadge = `<span style="background:#ffc107; color:#333; padding:2px 6px; border-radius:4px; font-size:11px; margin-left:6px;">LATE: ${arrivingLate}</span>`;
-        }
-        
-        const div = document.createElement('div');
-        div.className = 'list-item';
-        div.style.flexDirection = 'column';
-        div.style.alignItems = 'flex-start';
-        
-        div.innerHTML = `
-            <div style="width:100%; display:flex; justify-content:space-between; align-items:center;">
-                <div class="list-item-left">
-                    <div class="item-title">${user.displayName || username} ${isCreator ? '(Creator)' : ''} ${isEventAdmin ? '(Admin)' : ''} ${statusBadge}</div>
-                    <div class="item-sub">${username}</div>
-                </div>
-            </div>
-            <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">
-                ${!isEventAdmin && !isCreator ? `<button onclick="makeEventAdmin('${username}')" style="padding:6px 12px; font-size:13px;">Make Admin</button>` : ''}
-                ${isEventAdmin && !isCreator ? `<button class="secondary" onclick="removeEventAdmin('${username}')" style="padding:6px 12px; font-size:13px;">Remove Admin</button>` : ''}
-                ${hasLeft ? `<button onclick="returnAttendee('${username}')" style="padding:6px 12px; font-size:13px;">Mark Returned</button>` : `<button onclick="markAttendeeLeft('${username}')" style="padding:6px 12px; font-size:13px;">Mark Left</button>`}
-                ${!hasLeft && !arrivingLate ? `<button onclick="markAttendeeArrivingLate('${username}')" style="padding:6px 12px; font-size:13px;">Mark Arriving Late</button>` : ''}
-                ${arrivingLate ? `<button onclick="clearLateStatus('${username}')" style="padding:6px 12px; font-size:13px;">Clear Late Status</button>` : ''}
-                ${!isCreator ? `<button class="danger" onclick="removeAttendeeFromEvent('${username}')" style="padding:6px 12px; font-size:13px;">Remove from Event</button>` : ''}
-            </div>
-        `;
-        
-        container.appendChild(div);
-    }
-    
-    // Render plus ones
-    for (const po of plusOnes) {
-        const status = attendeeStatuses[po.id] || 'active';
-        const hasLeft = status === 'left';
-        const arrivingLate = attendeeStatuses[po.id + '_late'];
-        
-        let statusBadge = '';
-        if (hasLeft) {
-            statusBadge = '<span style="background:#dc3545; color:white; padding:2px 6px; border-radius:4px; font-size:11px; margin-left:6px;">LEFT</span>';
-        } else if (arrivingLate) {
-            statusBadge = `<span style="background:#ffc107; color:#333; padding:2px 6px; border-radius:4px; font-size:11px; margin-left:6px;">LATE: ${arrivingLate}</span>`;
-        }
-        
-        const plusOneNum = getPlusOneNumber(po);
-        
-        const div = document.createElement('div');
-        div.className = 'list-item';
-        div.style.flexDirection = 'column';
-        div.style.alignItems = 'flex-start';
-        
-        div.innerHTML = `
-            <div style="width:100%; display:flex; justify-content:space-between; align-items:center;">
-                <div class="list-item-left">
-                    <div class="item-title">${po.name} (Plus One) ${statusBadge}</div>
-                    <div class="item-sub">Added by ${po.addedBy} (+${plusOneNum})</div>
-                </div>
-            </div>
-            <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">
-                ${hasLeft ? `<button onclick="returnAttendee('${po.id}')" style="padding:6px 12px; font-size:13px;">Mark Returned</button>` : `<button onclick="markAttendeeLeft('${po.id}')" style="padding:6px 12px; font-size:13px;">Mark Left</button>`}
-                ${!hasLeft && !arrivingLate ? `<button onclick="markAttendeeArrivingLate('${po.id}')" style="padding:6px 12px; font-size:13px;">Mark Arriving Late</button>` : ''}
-                ${arrivingLate ? `<button onclick="clearLateStatus('${po.id}')" style="padding:6px 12px; font-size:13px;">Clear Late Status</button>` : ''}
-                <button class="danger" onclick="removePlusOneFromEventAdmin('${po.id}')" style="padding:6px 12px; font-size:13px;">Remove Plus One</button>
-            </div>
-        `;
-        
-        container.appendChild(div);
-    }
-}
-
-function renderEventAdminVotes() {
-    const activeContainer = document.getElementById('event-admin-active-votes');
-    const pastContainer = document.getElementById('event-admin-past-votes');
-    
-    const allVotes = Object.values(currentEvent.votes || {});
-    const activeVotes = allVotes.filter(v => v.status === 'active');
-    const pastVotes = allVotes.filter(v => v.status !== 'active');
-    
-    // Render active votes
-    if (activeVotes.length === 0) {
-        activeContainer.innerHTML = '<p style="color:#666; font-size:13px;">No active votes</p>';
-    } else {
-        activeContainer.innerHTML = '';
-        activeVotes.forEach(vote => {
-            const div = document.createElement('div');
-            div.className = 'list-item';
-            
-            const voteName = vote.voteName || `Vote by ${vote.createdBy}`;
-            const gameCount = (vote.filteredGames || []).length;
-            
-            div.innerHTML = `
-                <div class="list-item-left">
-                    <div class="item-title">${voteName}</div>
-                    <div class="item-sub">${gameCount} games • ${vote.participants.length} participants • Created ${new Date(vote.createdAt).toLocaleDateString()}</div>
-                </div>
-                <button class="danger" onclick="deleteEventVote('${vote.id}')" style="padding:6px 12px; font-size:13px;">Delete</button>
-            `;
-            
-            activeContainer.appendChild(div);
-        });
-    }
-    
-    // Render past votes
-    if (pastVotes.length === 0) {
-        pastContainer.innerHTML = '<p style="color:#666; font-size:13px;">No past votes</p>';
-    } else {
-        pastContainer.innerHTML = '';
-        pastVotes.forEach(vote => {
-            const div = document.createElement('div');
-            div.className = 'list-item';
-            
-            const voteName = vote.voteName || `Vote by ${vote.createdBy}`;
-            const winnerName = vote.winner ? vote.winner.name : 'No winner';
-            
-            div.innerHTML = `
-                <div class="list-item-left">
-                    <div class="item-title">${voteName}</div>
-                    <div class="item-sub">Winner: ${winnerName} • Created ${new Date(vote.createdAt).toLocaleDateString()}</div>
-                </div>
-                <button class="danger" onclick="deleteEventVote('${vote.id}')" style="padding:6px 12px; font-size:13px;">Delete</button>
-            `;
-            
-            pastContainer.appendChild(div);
-        });
-    }
-}
-
-async function makeEventAdmin(username) {
-    if (!currentEvent.eventAdmins) {
-        currentEvent.eventAdmins = [];
-    }
-    
-    if (!currentEvent.eventAdmins.includes(username)) {
-        currentEvent.eventAdmins.push(username);
-    }
-    
-    showLoading(true);
-    await fsSaveGroup(activeGroup);
-    showLoading(false);
-    
-    await renderEventAdminAttendees();
-}
-
-async function removeEventAdmin(username) {
-    if (!confirm(`Remove ${username} as event admin?`)) return;
-    
-    currentEvent.eventAdmins = (currentEvent.eventAdmins || []).filter(a => a !== username);
-    
-    showLoading(true);
-    await fsSaveGroup(activeGroup);
-    showLoading(false);
-    
-    await renderEventAdminAttendees();
-}
-
-async function removeAttendeeFromEvent(username) {
-    if (!confirm(`Remove ${username} from this event? This will remove them from all games and votes.`)) return;
-    
-    showLoading(true);
-    
-    // Remove from attendees
-    currentEvent.attendees = currentEvent.attendees.filter(a => a !== username);
-    
-    // Remove from attendee games
-    delete currentEvent.attendeeGames[username];
-    
-    // Remove from scheduled games
-    const scheduledGames = currentEvent.scheduledGames || {};
-    Object.values(scheduledGames).forEach(sg => {
-        sg.players = sg.players.filter(p => p !== username);
-    });
-    
-    // Remove from proposed games
-    const proposedGames = currentEvent.proposedGames || [];
-    proposedGames.forEach(pg => {
-        pg.players = pg.players.filter(p => p !== username);
-    });
-    
-    // Remove from votes
-    const votes = currentEvent.votes || {};
-    Object.values(votes).forEach(vote => {
-        vote.participants = vote.participants.filter(p => p !== username);
-    });
-    
-    await fsSaveGroup(activeGroup);
-    showLoading(false);
-    
-    await renderEventAdminAttendees();
-    alert(`${username} has been removed from the event`);
-}
-
-async function removePlusOneFromEventAdmin(plusOneId) {
-    if (!confirm('Remove this plus one from the event?')) return;
-    
-    showLoading(true);
-    
-    // Remove from plus ones list
-    currentEvent.plusOnes = (currentEvent.plusOnes || []).filter(po => po.id !== plusOneId);
-    
-    // Remove from scheduled games
-    const scheduledGames = currentEvent.scheduledGames || {};
-    Object.values(scheduledGames).forEach(sg => {
-        sg.players = sg.players.filter(p => p !== plusOneId);
-    });
-    
-    // Remove from proposed games
-    const proposedGames = currentEvent.proposedGames || [];
-    proposedGames.forEach(pg => {
-        pg.players = pg.players.filter(p => p !== plusOneId);
-    });
-    
-    await fsSaveGroup(activeGroup);
-    showLoading(false);
-    
-    await renderEventAdminAttendees();
-}
-
-async function deleteEventVote(voteId) {
-    if (!confirm('Delete this vote? This cannot be undone.')) return;
-    
-    showLoading(true);
-    
-    delete currentEvent.votes[voteId];
-    
-    await fsSaveGroup(activeGroup);
-    showLoading(false);
-    
-    renderEventAdminVotes();
-}
-
-async function renderEventAdminScheduledGames() {
-    const container = document.getElementById('event-admin-scheduled-games');
-    const scheduledGames = currentEvent.scheduledGames || {};
-    const games = Object.values(scheduledGames);
-    
-    if (games.length === 0) {
-        container.innerHTML = '<p style="color:#666; font-size:13px;">No scheduled games</p>';
-        return;
-    }
-    
-    container.innerHTML = '';
-    
-    for (const sg of games) {
-        const game = sg.game;
-        const playerIds = sg.players || [];
-        const playerNames = await Promise.all(playerIds.map(id => getParticipantDisplayName(id)));
-        
-        const div = document.createElement('div');
-        div.className = 'list-item';
-        div.style.flexDirection = 'column';
-        div.style.alignItems = 'flex-start';
-        
-        const statusBadge = sg.status === 'complete' 
-            ? '<span style="background:#28a745; color:white; padding:3px 8px; border-radius:12px; font-size:11px; margin-left:8px;">COMPLETE</span>'
-            : '';
-        
-        div.innerHTML = `
-            <div style="width:100%;">
-                <div class="item-title">${game.name} ${statusBadge}</div>
-                <div class="item-sub">${game.minPlayers}–${game.maxPlayers} players • Players: ${playerNames.join(', ')}</div>
-            </div>
-            <div style="margin-top:10px; display:flex; gap:6px; flex-wrap:wrap;">
-                <button onclick="editGamePlayers('${sg.id}', 'scheduled')" style="padding:6px 12px; font-size:13px;">Edit Players</button>
-                ${sg.status !== 'complete' ? `<button class="success" onclick="markGameCompleteAdmin('${sg.id}')" style="padding:6px 12px; font-size:13px;">Mark Complete</button>` : ''}
-                <button class="danger" onclick="deleteGameAdmin('${sg.id}', 'scheduled')" style="padding:6px 12px; font-size:13px;">Delete</button>
-            </div>
-        `;
-        
-        container.appendChild(div);
-    }
-}
-
-async function renderEventAdminProposedGames() {
-    const container = document.getElementById('event-admin-proposed-games');
-    const proposedGames = currentEvent.proposedGames || [];
-    
-    if (proposedGames.length === 0) {
-        container.innerHTML = '<p style="color:#666; font-size:13px;">No proposed games</p>';
-        return;
-    }
-    
-    container.innerHTML = '';
-    
-    for (const pg of proposedGames) {
-        const game = pg.game;
-        const playerNames = await Promise.all(pg.players.map(id => getParticipantDisplayName(id)));
-        
-        const div = document.createElement('div');
-        div.className = 'list-item';
-        div.style.flexDirection = 'column';
-        div.style.alignItems = 'flex-start';
-        
-        div.innerHTML = `
-            <div style="width:100%;">
-                <div class="item-title">${game.name}</div>
-                <div class="item-sub">${pg.players.length}/${pg.minPlayers}-${pg.maxPlayers} players • Players: ${playerNames.join(', ')}</div>
-            </div>
-            <div style="margin-top:10px; display:flex; gap:6px; flex-wrap:wrap;">
-                <button onclick="editGamePlayers('${pg.id}', 'proposed')" style="padding:6px 12px; font-size:13px;">Edit Players</button>
-                <button class="success" onclick="scheduleProposedGameAdmin('${pg.id}')" style="padding:6px 12px; font-size:13px;">Schedule Game</button>
-                <button class="danger" onclick="deleteGameAdmin('${pg.id}', 'proposed')" style="padding:6px 12px; font-size:13px;">Delete</button>
-            </div>
-        `;
-        
-        container.appendChild(div);
-    }
-}
-
-async function editGamePlayers(gameId, gameType) {
-    const game = gameType === 'scheduled' 
-        ? currentEvent.scheduledGames[gameId]
-        : currentEvent.proposedGames.find(pg => pg.id === gameId);
-    
-    if (!game) return;
-    
-    const currentPlayers = game.players || [];
-    const attendees = currentEvent.attendees || [];
-    const plusOnes = currentEvent.plusOnes || [];
-    
-    // Create modal for player editing
-    const modal = document.createElement('div');
-    modal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:10000; display:flex; align-items:center; justify-content:center;';
-    
-    let playerHtml = '<div style="max-height:400px; overflow-y:auto;">';
-    
-    // Add attendees
-    for (const username of attendees) {
-        const user = await fsGetUser(username);
-        const isSelected = currentPlayers.includes(username);
-        playerHtml += `
-            <div style="padding:8px; border-bottom:1px solid #eee;">
-                <label style="display:flex; align-items:center; cursor:pointer;">
-                    <input type="checkbox" id="edit-player-${username}" ${isSelected ? 'checked' : ''} style="margin-right:8px;">
-                    <span>${user.displayName || username}</span>
-                </label>
-            </div>
-        `;
-    }
-    
-    // Add plus ones
-    for (const po of plusOnes) {
-        const isSelected = currentPlayers.includes(po.id);
-        playerHtml += `
-            <div style="padding:8px; border-bottom:1px solid #eee;">
-                <label style="display:flex; align-items:center; cursor:pointer;">
-                    <input type="checkbox" id="edit-player-${po.id}" ${isSelected ? 'checked' : ''} style="margin-right:8px;">
-                    <span>${po.name} (Plus One)</span>
-                </label>
-            </div>
-        `;
-    }
-    
-    playerHtml += '</div>';
-    
-    modal.innerHTML = `
-        <div style="background:white; max-width:500px; width:90%; border-radius:12px; padding:24px; max-height:80vh; overflow-y:auto;">
-            <h3>Edit Players for ${game.game.name}</h3>
-            <p style="font-size:13px; color:#666; margin-bottom:12px;">Select players for this game</p>
-            ${playerHtml}
-            <div style="display:flex; gap:8px; margin-top:16px;">
-                <button id="save-players-btn">Save</button>
-                <button class="secondary" id="cancel-players-btn">Cancel</button>
-            </div>
-        </div>
-    `;
-    
-    document.body.appendChild(modal);
-    
-    document.getElementById('save-players-btn').onclick = async () => {
-        const selectedPlayers = [];
-        
-        attendees.forEach(username => {
-            const cb = document.getElementById('edit-player-' + username);
-            if (cb && cb.checked) selectedPlayers.push(username);
-        });
-        
-        plusOnes.forEach(po => {
-            const cb = document.getElementById('edit-player-' + po.id);
-            if (cb && cb.checked) selectedPlayers.push(po.id);
-        });
-        
-        game.players = selectedPlayers;
-        
-        showLoading(true);
-        await fsSaveGroup(activeGroup);
-        showLoading(false);
-        
-        modal.remove();
-        
-        if (gameType === 'scheduled') {
-            await renderEventAdminScheduledGames();
-        } else {
-            await renderEventAdminProposedGames();
-        }
-    };
-    
-    document.getElementById('cancel-players-btn').onclick = () => {
-        modal.remove();
-    };
-}
-
-async function markGameCompleteAdmin(gameId) {
-    const sg = currentEvent.scheduledGames[gameId];
-    if (!sg) return;
-    
-    sg.status = 'complete';
-    
-    showLoading(true);
-    await fsSaveGroup(activeGroup);
-    showLoading(false);
-    
-    await renderEventAdminScheduledGames();
-}
-
-async function scheduleProposedGameAdmin(proposedId) {
-    const pg = currentEvent.proposedGames.find(g => g.id === proposedId);
-    if (!pg) return;
-    
-    // Create scheduled game
-    if (!currentEvent.scheduledGames) {
-        currentEvent.scheduledGames = {};
-    }
-    
-    const scheduledGameId = generateScheduledGameId();
-    currentEvent.scheduledGames[scheduledGameId] = {
-        id: scheduledGameId,
-        game: pg.game,
-        players: pg.players,
-        openToOthers: false,
-        maxPlayers: pg.players.length,
-        createdBy: session.username,
-        createdAt: new Date().toISOString(),
-        status: 'active'
-    };
-    
-    // Remove from proposed
-    currentEvent.proposedGames = currentEvent.proposedGames.filter(g => g.id !== proposedId);
-    
-    showLoading(true);
-    await fsSaveGroup(activeGroup);
-    showLoading(false);
-    
-    await renderEventAdminScheduledGames();
-    await renderEventAdminProposedGames();
-}
-
-async function deleteGameAdmin(gameId, gameType) {
-    if (!confirm('Delete this game?')) return;
-    
-    if (gameType === 'scheduled') {
-        delete currentEvent.scheduledGames[gameId];
-    } else {
-        currentEvent.proposedGames = currentEvent.proposedGames.filter(pg => pg.id !== gameId);
-    }
-    
-    showLoading(true);
-    await fsSaveGroup(activeGroup);
-    showLoading(false);
-    
-    if (gameType === 'scheduled') {
-        await renderEventAdminScheduledGames();
-    } else {
-        await renderEventAdminProposedGames();
-    }
-}
-
-async function markAttendeeLeft(username) {
-    if (!currentEvent.attendeeStatuses) {
-        currentEvent.attendeeStatuses = {};
-    }
-    
-    currentEvent.attendeeStatuses[username] = 'left';
-    
-    showLoading(true);
-    await fsSaveGroup(activeGroup);
-    showLoading(false);
-    
-    await renderEventAdminAttendees();
-}
-
-async function returnAttendee(username) {
-    if (!currentEvent.attendeeStatuses) {
-        currentEvent.attendeeStatuses = {};
-    }
-    
-    delete currentEvent.attendeeStatuses[username];
-    
-    showLoading(true);
-    await fsSaveGroup(activeGroup);
-    showLoading(false);
-    
-    await renderEventAdminAttendees();
-}
-
-async function markAttendeeArrivingLate(username) {
-    const lateTime = prompt('What time will they arrive? (e.g., "7:30 PM")');
-    if (!lateTime) return;
-    
-    if (!currentEvent.attendeeStatuses) {
-        currentEvent.attendeeStatuses = {};
-    }
-    
-    currentEvent.attendeeStatuses[username + '_late'] = lateTime;
-    
-    showLoading(true);
-    await fsSaveGroup(activeGroup);
-    showLoading(false);
-    
-    await renderEventAdminAttendees();
-}
-
-async function clearLateStatus(username) {
-    if (!currentEvent.attendeeStatuses) return;
-    
-    delete currentEvent.attendeeStatuses[username + '_late'];
-    
-    showLoading(true);
-    await fsSaveGroup(activeGroup);
-    showLoading(false);
-    
-    await renderEventAdminAttendees();
-}
-
-function goBackToEvent() {
-    openEvent(currentEvent.id);
-}
-
 async function addPlusOneToGame(gameId, gameType) {
     const plusOnes = currentEvent.plusOnes || [];
-    const attendeeStatuses = currentEvent.attendeeStatuses || {};
-    
-    // Filter out plus ones that have left
-    const myPlusOnes = plusOnes.filter(po => 
-        po.addedBy === session.username && attendeeStatuses[po.id] !== 'left'
-    );
+    const myPlusOnes = plusOnes.filter(po => po.addedBy === session.username);
     
     if (myPlusOnes.length === 0) {
-        alert('You don\'t have any available plus ones to add to this game.');
-
+        alert('You don\'t have any plus ones added to this event.');
         return;
     }
     
@@ -6048,49 +5257,6 @@ function goBackToEvent() {
     } else {
         goBackToGroup();
     }
-}
-
-async function confirmNoLongerAttending() {
-    if (!confirm('Are you sure you want to remove yourself from this event? You will be removed from all games and votes.')) {
-        return;
-    }
-    
-    showLoading(true);
-    
-    const username = session.username;
-    
-    // Remove from attendees
-    currentEvent.attendees = currentEvent.attendees.filter(a => a !== username);
-    
-    // Remove from attendee games
-    delete currentEvent.attendeeGames[username];
-    
-    // Remove from scheduled games
-    const scheduledGames = currentEvent.scheduledGames || {};
-    Object.values(scheduledGames).forEach(sg => {
-        sg.players = sg.players.filter(p => p !== username);
-    });
-    
-    // Remove from proposed games
-    const proposedGames = currentEvent.proposedGames || [];
-    proposedGames.forEach(pg => {
-        pg.players = pg.players.filter(p => p !== username);
-    });
-    
-    // Remove from votes
-    const votes = currentEvent.votes || {};
-    Object.values(votes).forEach(vote => {
-        vote.participants = vote.participants.filter(p => p !== username);
-    });
-    
-    // Remove all user's plus ones
-    currentEvent.plusOnes = (currentEvent.plusOnes || []).filter(po => po.addedBy !== username);
-    
-    await fsSaveGroup(activeGroup);
-    showLoading(false);
-    
-    alert('You have been removed from this event');
-    goBackToGroup();
 }
 
 async function confirmDeleteEvent() {
@@ -6676,14 +5842,16 @@ async function renderEventAttendees() {
             title = `<span style="font-size:16px; font-weight:600;">${att.displayName}</span> <span style="font-size:13px; color:#999;">(${att.user.addedBy} +${plusOneNum})</span>${isMyPlusOne ? ' <span style="color:#667eea; font-size:11px; font-weight:600;">YOUR +1</span>' : ''} ${statusText}`;
         }
         
-        // Build action buttons - only allow users to edit their own status or their plus ones
+        // Build action buttons
         let actions = '';
         
         if (isMe || isMyPlusOne) {
             if (att.hasLeft) {
                 actions += `<button class="success" style="padding:5px 10px; font-size:13px; margin:0 4px;" onclick="markReturnedToEvent('${att.username}')">Return to Event</button>`;
+                actions += `<button class="danger" style="padding:5px 10px; font-size:13px; margin:0;" onclick="removeFromEvent('${att.username}')">Remove from Event</button>`;
             } else if (att.arrivingLate) {
                 actions += `<button class="success" style="padding:5px 10px; font-size:13px; margin:0 4px;" onclick="markArrived('${att.username}')">Mark as Arrived</button>`;
+                actions += `<button class="danger" style="padding:5px 10px; font-size:13px; margin:0;" onclick="removeFromEvent('${att.username}')">Remove from Event</button>`;
             } else {
                 actions += `<button class="secondary" style="padding:5px 10px; font-size:13px; margin:0 4px;" onclick="markArrivingLate('${att.username}')">Mark as Arriving Late</button>`;
                 actions += `<button class="secondary" style="padding:5px 10px; font-size:13px; margin:0;" onclick="markLeftEvent('${att.username}')">Mark as Left</button>`;
@@ -6693,6 +5861,18 @@ async function renderEventAttendees() {
             if (isMyPlusOne) {
                 actions += `<button class="danger" style="padding:5px 10px; font-size:13px; margin-left:4px;" onclick="removePlusOne('${att.username}')">Remove Plus One</button>`;
             }
+        }
+        
+        if (isEventAdmin && !isMe && !isMyPlusOne) {
+            if (att.hasLeft) {
+                actions += `<button class="success" style="padding:5px 10px; font-size:13px; margin:0 4px;" onclick="markReturnedToEvent('${att.username}')">Mark Returned</button>`;
+            } else if (att.arrivingLate) {
+                actions += `<button class="success" style="padding:5px 10px; font-size:13px; margin:0 4px;" onclick="markArrived('${att.username}')">Mark Arrived</button>`;
+            } else {
+                actions += `<button class="secondary" style="padding:5px 10px; font-size:13px; margin:0 4px;" onclick="markArrivingLate('${att.username}')">Mark as Arriving Late</button>`;
+                actions += `<button class="secondary" style="padding:5px 10px; font-size:13px; margin:0 4px;" onclick="markLeftEvent('${att.username}')">Mark Left</button>`;
+            }
+            actions += `<button class="danger" style="padding:5px 10px; font-size:13px; margin:0;" onclick="removeFromEvent('${att.username}')">Remove</button>`;
         }
         
         const div = document.createElement('div');
@@ -7634,7 +6814,7 @@ async function viewPastEvents() {
     pastEvents.forEach(event => {
         const div = document.createElement('div');
         div.className = 'vote-card';
-        makeIOSClickable(div, () => openEvent(event.id));
+        div.onclick = () => openEvent(event.id);
         
         const eventName = event.name || formatEventDate(event.date);
         const totalAttendees = event.attendees.length + (event.plusOnes || []).length;
@@ -7719,139 +6899,6 @@ class DualRange {
 }
 
 // ════════════════════════════════════════════════════════════════════
-// iOS-COMPATIBLE CLICK HELPER
-// ════════════════════════════════════════════════════════════════════
-function makeIOSClickable(element, callback, options = {}) {
-    const { 
-        visualFeedback = true,
-        feedbackColor = '#f0f0f0',
-        stopPropagation = false,
-        inScrollableList = false  // NEW: stricter handling for list items
-    } = options;
-    
-    let tapped = false;
-    let touchStartTime = 0;
-    let touchMoved = false;
-    let touchStartX = 0;
-    let touchStartY = 0;
-    let originalBg = '';
-    let lastTapTime = 0;
-    let isProcessing = false;
-    
-    // Different thresholds for scrollable lists vs regular buttons
-    const minDuration = inScrollableList ? 200 : 100;
-    const maxDuration = inScrollableList ? 2000 : 1000;
-    const moveTolerance = inScrollableList ? 8 : 15;  // Stricter for lists
-    const debounce = inScrollableList ? 200 : 100;
-    
-    element.style.cursor = 'pointer';
-    
-    // Touch events for iOS and Android
-    element.addEventListener('touchstart', function(e) {
-        // Ignore if currently processing a tap
-        if (isProcessing) {
-            return;
-        }
-        
-        touchStartTime = Date.now();
-        touchMoved = false;
-        tapped = true;
-        
-        // Record starting position
-        const touch = e.touches[0];
-        touchStartX = touch.clientX;
-        touchStartY = touch.clientY;
-        
-        if (visualFeedback) {
-            originalBg = e.currentTarget.style.backgroundColor;
-            e.currentTarget.style.backgroundColor = feedbackColor;
-        }
-        if (stopPropagation) {
-            e.stopPropagation();
-        }
-    }, { passive: true });
-    
-    element.addEventListener('touchmove', function(e) {
-        // Check if moved beyond tolerance
-        const touch = e.touches[0];
-        const deltaX = Math.abs(touch.clientX - touchStartX);
-        const deltaY = Math.abs(touch.clientY - touchStartY);
-        
-        if (deltaX > moveTolerance || deltaY > moveTolerance) {
-            touchMoved = true;
-            if (visualFeedback) {
-                e.currentTarget.style.backgroundColor = originalBg;
-            }
-        }
-    }, { passive: true });
-    
-    element.addEventListener('touchend', function(e) {
-        const touchDuration = Date.now() - touchStartTime;
-        const timeSinceLastTap = Date.now() - lastTapTime;
-        
-        // Always reset visual feedback
-        if (visualFeedback) {
-            e.currentTarget.style.backgroundColor = originalBg;
-        }
-        
-        // Validation with dynamic thresholds
-        if (tapped && !touchMoved && 
-            touchDuration >= minDuration && touchDuration < maxDuration &&
-            timeSinceLastTap >= debounce &&
-            !isProcessing) {
-            
-            e.preventDefault();
-            if (stopPropagation) {
-                e.stopPropagation();
-            }
-            
-            isProcessing = true;
-            lastTapTime = Date.now();
-            
-            // Execute callback
-            callback(e);
-            
-            // Release processing lock
-            setTimeout(() => {
-                isProcessing = false;
-            }, 50);
-            
-            tapped = false;
-        } else {
-            tapped = false;
-        }
-    }, { passive: false });
-    
-    // Click events for desktop
-    element.addEventListener('click', function(e) {
-        if (!tapped) {
-            if (stopPropagation) {
-                e.stopPropagation();
-            }
-            callback(e);
-        }
-            setTimeout(() => {
-                isProcessing = false;
-            }, 100);
-            
-            tapped = false;
-        } else {
-            tapped = false;
-        }
-    }, { passive: false });
-    
-    // Click events for desktop
-    element.addEventListener('click', function(e) {
-        if (!tapped) {
-            if (stopPropagation) {
-                e.stopPropagation();
-            }
-            callback(e);
-        }
-    });
-}
-
-// ════════════════════════════════════════════════════════════════════
 // BOOTSTRAP
 // ════════════════════════════════════════════════════════════════════
 (function() {
@@ -7870,8 +6917,6 @@ function makeIOSClickable(element, callback, options = {}) {
     }
     bindTab('tab-login', 'login');
     bindTab('tab-register', 'register');
-
-    // Login and register buttons now use inline ontouchend handlers
 
     // Handle browser back/forward buttons
     window.addEventListener('popstate', function(event) {
