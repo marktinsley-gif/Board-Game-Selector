@@ -282,7 +282,7 @@ button.ghost:hover { background:#667eea; color:white; }
         <input type="text" id="login-username" placeholder="your username" autocomplete="off">
         <label for="login-password">Password</label>
         <input type="password" id="login-password" placeholder="••••••••" autocomplete="off">
-        <button onclick="doLogin()" style="width:100%; margin:8px 0;">Log In</button>
+        <button id="login-btn" style="width:100%; margin:8px 0;">Log In</button>
       </div>
 
       <div id="register-form" style="display:none;">
@@ -296,7 +296,7 @@ button.ghost:hover { background:#667eea; color:white; }
         <input type="password" id="reg-password" placeholder="••••••••" autocomplete="off">
         <label for="reg-password2">Confirm Password</label>
         <input type="password" id="reg-password2" placeholder="••••••••" autocomplete="off">
-        <button type="button" onclick="doRegister()" style="width:100%; margin:8px 0;">Create Account</button>
+        <button type="button" id="register-btn" style="width:100%; margin:8px 0;">Create Account</button>
       </div>
     </div>
   </div>
@@ -7869,38 +7869,34 @@ function makeIOSClickable(element, callback, options = {}) {
     bindTab('tab-login', 'login');
     bindTab('tab-register', 'register');
 
-    // Wait for DOM to be ready, then bind login/register buttons
-    document.addEventListener('DOMContentLoaded', function() {
-        // Login button
-        var loginBtn = document.querySelector('#login-form button');
-        if (loginBtn) {
-            var loginTapped = false;
-            loginBtn.addEventListener('touchend', function(e) {
-                e.preventDefault();
-                loginTapped = true;
-                doLogin();
-            }, { passive: false });
-            loginBtn.addEventListener('click', function(e) {
-                if (loginTapped) { loginTapped = false; return; }
-                doLogin();
-            });
-        }
-        
-        // Register button  
-        var regBtn = document.querySelector('#register-form button[onclick*="doRegister"]');
-        if (regBtn) {
-            var regTapped = false;
-            regBtn.addEventListener('touchend', function(e) {
-                e.preventDefault();
-                regTapped = true;
-                doRegister();
-            }, { passive: false });
-            regBtn.addEventListener('click', function(e) {
-                if (regTapped) { regTapped = false; return; }
-                doRegister();
-            });
-        }
-    });
+    // Bind login/register buttons directly (DOM is ready since script is at end of body)
+    var loginBtn = document.getElementById('login-btn');
+    if (loginBtn) {
+        var loginTapped = false;
+        loginBtn.addEventListener('touchend', function(e) {
+            e.preventDefault();
+            loginTapped = true;
+            doLogin();
+        }, { passive: false });
+        loginBtn.addEventListener('click', function(e) {
+            if (loginTapped) { loginTapped = false; return; }
+            doLogin();
+        });
+    }
+    
+    var regBtn = document.getElementById('register-btn');
+    if (regBtn) {
+        var regTapped = false;
+        regBtn.addEventListener('touchend', function(e) {
+            e.preventDefault();
+            regTapped = true;
+            doRegister();
+        }, { passive: false });
+        regBtn.addEventListener('click', function(e) {
+            if (regTapped) { regTapped = false; return; }
+            doRegister();
+        });
+    }
 
     // Handle browser back/forward buttons
     window.addEventListener('popstate', function(event) {
