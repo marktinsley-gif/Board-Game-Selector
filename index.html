@@ -7752,11 +7752,18 @@ function makeIOSClickable(element, callback, options = {}) {
     let touchStartX = 0;
     let touchStartY = 0;
     let originalBg = '';
+    let lastTapTime = 0;
+    let isProcessing = false;
     
     element.style.cursor = 'pointer';
     
     // Touch events for iOS and Android
     element.addEventListener('touchstart', function(e) {
+        // Ignore if currently processing a tap
+        if (isProcessing) {
+            return;
+        }
+        
         touchStartTime = Date.now();
         touchMoved = false;
         tapped = true;
@@ -7776,12 +7783,12 @@ function makeIOSClickable(element, callback, options = {}) {
     }, { passive: true });
     
     element.addEventListener('touchmove', function(e) {
-        // Check if moved more than 10 pixels in any direction
+        // Very strict - any movement > 3 pixels cancels
         const touch = e.touches[0];
         const deltaX = Math.abs(touch.clientX - touchStartX);
         const deltaY = Math.abs(touch.clientY - touchStartY);
         
-        if (deltaX > 10 || deltaY > 10) {
+        if (deltaX > 3 || deltaY > 3) {
             touchMoved = true;
             if (visualFeedback) {
                 e.currentTarget.style.backgroundColor = originalBg;
@@ -7791,26 +7798,42 @@ function makeIOSClickable(element, callback, options = {}) {
     
     element.addEventListener('touchend', function(e) {
         const touchDuration = Date.now() - touchStartTime;
+        const timeSinceLastTap = Date.now() - lastTapTime;
         
-        // Only trigger if:
+        // Always reset visual feedback
+        if (visualFeedback) {
+            e.currentTarget.style.backgroundColor = originalBg;
+        }
+        
+        // Very strict validation:
         // 1. Was tapped
-        // 2. Didn't move more than 10px (not a scroll/swipe)
-        // 3. Touch duration was reasonable (150ms-1000ms) - increased minimum for less sensitivity
-        if (tapped && !touchMoved && touchDuration >= 150 && touchDuration < 1000) {
+        // 2. Didn't move more than 3px
+        // 3. Touch duration 400ms-2000ms (requires deliberate press)
+        // 4. At least 500ms since last tap (prevents accidental double-tap)
+        // 5. Not currently processing another tap
+        if (tapped && !touchMoved && 
+            touchDuration >= 400 && touchDuration < 2000 &&
+            timeSinceLastTap >= 500 &&
+            !isProcessing) {
+            
             e.preventDefault();
-            if (visualFeedback) {
-                e.currentTarget.style.backgroundColor = originalBg;
-            }
             if (stopPropagation) {
                 e.stopPropagation();
             }
+            
+            isProcessing = true;
+            lastTapTime = Date.now();
+            
+            // Execute callback
             callback(e);
+            
+            // Release processing lock after 100ms
+            setTimeout(() => {
+                isProcessing = false;
+            }, 100);
+            
             tapped = false;
         } else {
-            // Reset visual feedback even if not triggering callback
-            if (visualFeedback) {
-                e.currentTarget.style.backgroundColor = originalBg;
-            }
             tapped = false;
         }
     }, { passive: false });
