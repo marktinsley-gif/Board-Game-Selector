@@ -5054,8 +5054,6 @@ function applyProposeFilters() {
         const div = document.createElement('div');
         div.className = 'game-item';
         
-        const imgHtml = `<div class="game-image-placeholder">${getGameInitials(game.name)}</div>`;
-        
         const bggUrl = game.id && game.id !== 'custom' ? `https://boardgamegeek.com/boardgame/${game.id}` : '#';
         const yearPublished = game.yearPublished || '';
         const playingTime = game.playingTime || '?';
@@ -5064,8 +5062,9 @@ function applyProposeFilters() {
         
         const expansionBadge = isExpansion ? ' <span style="background:#999; color:white; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:600; margin-left:6px;">EXP</span>' : '';
         
+        // Create all elements WITHOUT the button first
         div.innerHTML = `
-            ${imgHtml}
+            <div class="game-image-placeholder">${getGameInitials(game.name)}</div>
             <div class="game-info">
                 <div class="game-name">
                     ${game.id && game.id !== 'custom' ? `<a href="${bggUrl}" target="_blank" rel="noopener noreferrer" style="color:#667eea; text-decoration:none; font-weight:600;">${game.name}</a>` : `<span style="font-weight:600;">${game.name}</span>`}
@@ -5073,11 +5072,25 @@ function applyProposeFilters() {
                 </div>
                 <div class="game-details">${game.minPlayers}–${game.maxPlayers} players • ${playingTime} min • Complexity ${complexity} • Rating ${rating}</div>
             </div>
-            <div class="game-actions">
-                <button class="success" onclick="selectGameForProposeByIndex(${index})" style="white-space:nowrap;">Propose This Game</button>
-            </div>
+            <div class="game-actions"></div>
         `;
         
+        // Create button as actual DOM element and attach listener directly
+        const actionsDiv = div.querySelector('.game-actions');
+        const button = document.createElement('button');
+        button.className = 'success';
+        button.style.whiteSpace = 'nowrap';
+        button.textContent = 'Propose This Game';
+        
+        // Attach click listener DIRECTLY to the button element
+        button.addEventListener('click', function(e) {
+            console.log('=== BUTTON CLICKED! Index:', index);
+            e.preventDefault();
+            e.stopPropagation();
+            selectGameForProposeByIndex(index);
+        });
+        
+        actionsDiv.appendChild(button);
         container.appendChild(div);
     });
 }
