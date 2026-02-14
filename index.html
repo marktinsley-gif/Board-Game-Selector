@@ -5066,11 +5066,22 @@ function applyProposeFilters() {
                 <div class="game-details">${game.minPlayers}–${game.maxPlayers} players • ${playingTime} min • Complexity ${complexity} • Rating ${rating}</div>
             </div>
             <div class="game-actions">
-                <button class="success" onclick="selectGameForProposeByIndex(${index})" style="white-space:nowrap;">Propose This Game</button>
+                <button class="success" id="propose-btn-${index}" style="white-space:nowrap;">Propose This Game</button>
             </div>
         `;
         
         container.appendChild(div);
+        
+        // Add event listener AFTER appending to DOM
+        const btn = document.getElementById(`propose-btn-${index}`);
+        if (btn) {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Button clicked for index:', index);
+                selectGameForProposeByIndex(index);
+            });
+        }
     });
 }
 
