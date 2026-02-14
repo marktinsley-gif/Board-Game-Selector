@@ -5075,18 +5075,26 @@ function applyProposeFilters() {
 }
 
 function selectGameForProposeByIndex(index) {
+    console.log('selectGameForProposeByIndex called with index:', index);
     const game = window.proposeFilteredGames[index];
-    if (!game) return;
+    console.log('Found game:', game);
+    if (!game) {
+        console.error('No game found at index', index);
+        return;
+    }
     selectGameForProposePage(game);
 }
 
 function selectGameForProposePage(game) {
+    console.log('selectGameForProposePage called with game:', game.name);
     selectedGameForProposal = game;
     
     // Show configuration modal
     document.getElementById('configure-game-title').textContent = `Propose: ${game.name}`;
     document.getElementById('proposed-min-players').value = game.minPlayers;
     document.getElementById('proposed-max-players').value = game.maxPlayers;
+    
+    console.log('About to show modal...');
     
     // Render participant checkboxes
     const container = document.getElementById('proposed-game-participants');
@@ -5131,7 +5139,10 @@ function selectGameForProposePage(game) {
         container.appendChild(label);
     });
     
-    document.getElementById('configure-propose-modal').style.display = 'block';
+    const modal = document.getElementById('configure-proposed-game-modal');
+    console.log('Modal element:', modal);
+    modal.style.display = 'block';
+    console.log('Modal should now be visible');
 }
 
 function proposeCustomGame() {
@@ -5196,7 +5207,7 @@ function proposeCustomGame() {
         container.appendChild(label);
     });
     
-    document.getElementById('configure-propose-modal').style.display = 'block';
+    document.getElementById('configure-proposed-game-modal').style.display = 'block';
 }
 
 function cancelPropose() {
