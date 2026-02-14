@@ -4298,6 +4298,10 @@ async function createEventSubmit() {
     showLoading(true);
     
     const eventId = generateEventId();
+    
+    // Group admins who are attending automatically become event admins
+    const eventAdmins = attendees.filter(username => activeGroup.admins && activeGroup.admins.includes(username));
+    
     const newEvent = {
         id: eventId,
         groupCode: activeGroupCode,
@@ -4305,6 +4309,7 @@ async function createEventSubmit() {
         name: name,
         isPublic: isPublic,
         attendees: attendees,
+        eventAdmins: eventAdmins,
         createdBy: session.username,
         createdAt: new Date().toISOString(),
         eventPromotions: {},
@@ -4502,8 +4507,20 @@ async function addEventAttendeesSubmit() {
     
     showLoading(true);
     
+    // Initialize eventAdmins if it doesn't exist
+    if (!currentEvent.eventAdmins) {
+        currentEvent.eventAdmins = [];
+    }
+    
     for (const username of newAttendees) {
         currentEvent.attendees.push(username);
+        
+        // If user is a group admin, automatically make them event admin
+        if (activeGroup.admins && activeGroup.admins.includes(username)) {
+            if (!currentEvent.eventAdmins.includes(username)) {
+                currentEvent.eventAdmins.push(username);
+            }
+        }
         
         const user = await fsGetUser(username);
         if (user) {
@@ -5027,13 +5044,14 @@ function applyProposeFilters() {
         return;
     }
     
-    filtered.forEach(game => {
+    // Store filtered games globally so we can access by index
+    window.proposeFilteredGames = filtered;
+    
+    filtered.forEach((game, index) => {
         const isExpansion = game.itemType === 'expansion' || game.itemType === 'boardgameexpansion';
         
         const div = document.createElement('div');
         div.className = 'list-item';
-        div.style.cursor = 'pointer';
-        div.onclick = () => selectGameForProposePage(game);
         
         if (isExpansion) {
             div.style.opacity = '0.7';
@@ -5042,7 +5060,7 @@ function applyProposeFilters() {
         const expansionBadge = isExpansion ? ' <span style="background:#999; color:white; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:600;">EXP</span>' : '';
         
         div.innerHTML = `
-            <div class="list-item-left">
+            <div class="list-item-left" onclick="selectGameForProposeByIndex(${index})" style="cursor:pointer; flex:1;">
                 <div class="item-title">${game.name}${expansionBadge}</div>
                 <div class="item-sub">
                     ${game.minPlayers}-${game.maxPlayers} players
@@ -5054,6 +5072,12 @@ function applyProposeFilters() {
         
         container.appendChild(div);
     });
+}
+
+function selectGameForProposeByIndex(index) {
+    const game = window.proposeFilteredGames[index];
+    if (!game) return;
+    selectGameForProposePage(game);
 }
 
 function selectGameForProposePage(game) {
