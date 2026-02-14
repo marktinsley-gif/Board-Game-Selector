@@ -5143,7 +5143,7 @@ function selectGameForProposePage(game) {
         const label = document.createElement('label');
         label.className = 'participant-checkbox';
         label.innerHTML = `
-            <input type="checkbox" value="${username}" ${username === session.username ? 'checked' : ''}>
+            <input type="checkbox" id="prop-check-${username}" value="${username}" ${username === session.username ? 'checked' : ''}>
             <span>${username}</span>
         `;
         container.appendChild(label);
@@ -5155,7 +5155,7 @@ function selectGameForProposePage(game) {
         const label = document.createElement('label');
         label.className = 'participant-checkbox';
         label.innerHTML = `
-            <input type="checkbox" value="${po.id}">
+            <input type="checkbox" id="prop-check-${po.id}" value="${po.id}">
             <span>${po.name} (+${plusOneNum})</span>
         `;
         container.appendChild(label);
@@ -5379,9 +5379,8 @@ async function saveProposedGame() {
             showLoading(false);
             hideConfigureProposeModal();
             
-            renderScheduledGames();
-            await renderEventAttendees();
-            renderProposedGames();
+            // Navigate back to event page
+            openEvent(currentEvent.id);
             return;
         }
     }
@@ -5407,8 +5406,8 @@ async function saveProposedGame() {
     showLoading(false);
     hideConfigureProposeModal();
     
-    renderProposedGames();
-    await renderEventAttendees();
+    // Navigate back to event page
+    openEvent(currentEvent.id);
 }
 
 async function joinProposedGame(proposedId) {
