@@ -1414,6 +1414,14 @@ button.ghost:hover { background:#667eea; color:white; }
 </div>
 
 <script>
+// TEST FUNCTION TO VERIFY JAVASCRIPT IS RUNNING
+console.log('=== JAVASCRIPT LOADED ===');
+window.testFunction = function() {
+    alert('TEST FUNCTION WORKS!');
+    console.log('Test function called successfully');
+};
+console.log('Test function defined. Try: testFunction() in console');
+
 // ════════════════════════════════════════════════════════════════════
 // FIRESTORE REST – direct fetch() to Firestore, no SDK needed
 // ════════════════════════════════════════════════════════════════════
@@ -5066,26 +5074,16 @@ function applyProposeFilters() {
                 <div class="game-details">${game.minPlayers}–${game.maxPlayers} players • ${playingTime} min • Complexity ${complexity} • Rating ${rating}</div>
             </div>
             <div class="game-actions">
-                <button class="success" id="propose-btn-${index}" style="white-space:nowrap;">Propose This Game</button>
+                <button class="success" onclick="selectGameForProposeByIndex(${index})" style="white-space:nowrap;">Propose This Game</button>
             </div>
         `;
         
         container.appendChild(div);
-        
-        // Add event listener AFTER appending to DOM
-        const btn = document.getElementById(`propose-btn-${index}`);
-        if (btn) {
-            btn.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('Button clicked for index:', index);
-                selectGameForProposeByIndex(index);
-            });
-        }
     });
 }
 
 function selectGameForProposeByIndex(index) {
+    console.log('=== BUTTON CLICKED! Index:', index);
     console.log('selectGameForProposeByIndex called with index:', index);
     const game = window.proposeFilteredGames[index];
     console.log('Found game:', game);
