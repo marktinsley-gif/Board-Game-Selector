@@ -5155,10 +5155,40 @@ function selectGameForProposePage(game) {
     availableAttendees.forEach(username => {
         const label = document.createElement('label');
         label.className = 'participant-checkbox';
-        label.innerHTML = `
-            <input type="checkbox" id="prop-check-${username}" value="${username}" ${username === session.username ? 'checked' : ''}>
-            <span>${username}</span>
-        `;
+        label.style.cursor = 'pointer';
+        label.style.touchAction = 'manipulation';
+        label.style.webkitUserSelect = 'none';
+        label.style.userSelect = 'none';
+        
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = `prop-check-${username}`;
+        checkbox.value = username;
+        checkbox.style.cursor = 'pointer';
+        checkbox.style.touchAction = 'manipulation';
+        if (username === session.username) {
+            checkbox.checked = true;
+        }
+        
+        const span = document.createElement('span');
+        span.textContent = username;
+        
+        label.appendChild(checkbox);
+        label.appendChild(span);
+        
+        // Make label click work on iOS
+        label.addEventListener('click', function(e) {
+            if (e.target === label) {
+                checkbox.checked = !checkbox.checked;
+            }
+        });
+        label.addEventListener('touchend', function(e) {
+            if (e.target === label) {
+                e.preventDefault();
+                checkbox.checked = !checkbox.checked;
+            }
+        });
+        
         container.appendChild(label);
     });
     
@@ -5167,10 +5197,37 @@ function selectGameForProposePage(game) {
         const plusOneNum = getPlusOneNumber(po);
         const label = document.createElement('label');
         label.className = 'participant-checkbox';
-        label.innerHTML = `
-            <input type="checkbox" id="prop-check-${po.id}" value="${po.id}">
-            <span>${po.name} (+${plusOneNum})</span>
-        `;
+        label.style.cursor = 'pointer';
+        label.style.touchAction = 'manipulation';
+        label.style.webkitUserSelect = 'none';
+        label.style.userSelect = 'none';
+        
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = `prop-check-${po.id}`;
+        checkbox.value = po.id;
+        checkbox.style.cursor = 'pointer';
+        checkbox.style.touchAction = 'manipulation';
+        
+        const span = document.createElement('span');
+        span.textContent = `${po.name} (+${plusOneNum})`;
+        
+        label.appendChild(checkbox);
+        label.appendChild(span);
+        
+        // Make label click work on iOS
+        label.addEventListener('click', function(e) {
+            if (e.target === label) {
+                checkbox.checked = !checkbox.checked;
+            }
+        });
+        label.addEventListener('touchend', function(e) {
+            if (e.target === label) {
+                e.preventDefault();
+                checkbox.checked = !checkbox.checked;
+            }
+        });
+        
         container.appendChild(label);
     });
     
@@ -5224,10 +5281,40 @@ function proposeCustomGame() {
     availableAttendees.forEach(username => {
         const label = document.createElement('label');
         label.className = 'participant-checkbox';
-        label.innerHTML = `
-            <input type="checkbox" value="${username}" ${username === session.username ? 'checked' : ''}>
-            <span>${username}</span>
-        `;
+        label.style.cursor = 'pointer';
+        label.style.touchAction = 'manipulation';
+        label.style.webkitUserSelect = 'none';
+        label.style.userSelect = 'none';
+        
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = `prop-check-${username}`;
+        checkbox.value = username;
+        checkbox.style.cursor = 'pointer';
+        checkbox.style.touchAction = 'manipulation';
+        if (username === session.username) {
+            checkbox.checked = true;
+        }
+        
+        const span = document.createElement('span');
+        span.textContent = username;
+        
+        label.appendChild(checkbox);
+        label.appendChild(span);
+        
+        // Make label click work on iOS
+        label.addEventListener('click', function(e) {
+            if (e.target === label) {
+                checkbox.checked = !checkbox.checked;
+            }
+        });
+        label.addEventListener('touchend', function(e) {
+            if (e.target === label) {
+                e.preventDefault();
+                checkbox.checked = !checkbox.checked;
+            }
+        });
+        
         container.appendChild(label);
     });
     
@@ -5235,10 +5322,37 @@ function proposeCustomGame() {
         const plusOneNum = getPlusOneNumber(po);
         const label = document.createElement('label');
         label.className = 'participant-checkbox';
-        label.innerHTML = `
-            <input type="checkbox" value="${po.id}">
-            <span>${po.name} (+${plusOneNum})</span>
-        `;
+        label.style.cursor = 'pointer';
+        label.style.touchAction = 'manipulation';
+        label.style.webkitUserSelect = 'none';
+        label.style.userSelect = 'none';
+        
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = `prop-check-${po.id}`;
+        checkbox.value = po.id;
+        checkbox.style.cursor = 'pointer';
+        checkbox.style.touchAction = 'manipulation';
+        
+        const span = document.createElement('span');
+        span.textContent = `${po.name} (+${plusOneNum})`;
+        
+        label.appendChild(checkbox);
+        label.appendChild(span);
+        
+        // Make label click work on iOS
+        label.addEventListener('click', function(e) {
+            if (e.target === label) {
+                checkbox.checked = !checkbox.checked;
+            }
+        });
+        label.addEventListener('touchend', function(e) {
+            if (e.target === label) {
+                e.preventDefault();
+                checkbox.checked = !checkbox.checked;
+            }
+        });
+        
         container.appendChild(label);
     });
     
@@ -8275,6 +8389,92 @@ class DualRange {
         }
     } else {
         goToPage('page-login');
+    }
+})();
+
+// ════════════════════════════════════════════════════════════════════
+// iOS/SAFARI FIX: Attach event listeners explicitly for better compatibility
+// ════════════════════════════════════════════════════════════════════
+(function initIOSEventListeners() {
+    console.log('=== INITIALIZING iOS EVENT LISTENERS ===');
+    
+    // Wait for DOM to be fully ready
+    const attachListeners = () => {
+        // Propose page search bar
+        const proposeSearch = document.getElementById('propose-search');
+        if (proposeSearch) {
+            proposeSearch.addEventListener('input', applyProposeFilters);
+            proposeSearch.addEventListener('keyup', applyProposeFilters);
+            console.log('✓ Propose search listeners attached');
+        }
+        
+        // Propose page filters button
+        const topbarFiltersBtn = document.querySelector('#page-propose-game .topbar button');
+        if (topbarFiltersBtn && topbarFiltersBtn.textContent.includes('Filters')) {
+            topbarFiltersBtn.addEventListener('click', toggleProposeFilters);
+            topbarFiltersBtn.addEventListener('touchend', function(e) {
+                e.preventDefault();
+                toggleProposeFilters();
+            });
+            console.log('✓ Filters button listeners attached');
+        }
+        
+        // Propose page sort dropdown
+        const proposeSort = document.getElementById('propose-sort');
+        if (proposeSort) {
+            proposeSort.addEventListener('change', applyProposeFilters);
+            console.log('✓ Sort dropdown listeners attached');
+        }
+        
+        // Propose page checkboxes
+        const proposeNoExp = document.getElementById('propose-no-expansions');
+        if (proposeNoExp) {
+            proposeNoExp.addEventListener('change', applyProposeFilters);
+            console.log('✓ No expansions checkbox listener attached');
+        }
+        
+        const proposeAllPlayers = document.getElementById('propose-filter-all-player-counts');
+        if (proposeAllPlayers) {
+            proposeAllPlayers.addEventListener('change', applyProposeFilters);
+            console.log('✓ All player counts checkbox listener attached');
+        }
+        
+        // Modal save button
+        const modalContainer = document.getElementById('configure-proposed-game-modal');
+        if (modalContainer) {
+            const saveBtn = modalContainer.querySelector('button:not(.secondary)');
+            if (saveBtn) {
+                saveBtn.addEventListener('click', saveProposedGame);
+                saveBtn.addEventListener('touchend', function(e) {
+                    e.preventDefault();
+                    saveProposedGame();
+                });
+                console.log('✓ Modal save button listeners attached');
+            }
+            
+            const cancelBtn = modalContainer.querySelector('button.secondary');
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', hideConfigureProposeModal);
+                cancelBtn.addEventListener('touchend', function(e) {
+                    e.preventDefault();
+                    hideConfigureProposeModal();
+                });
+                console.log('✓ Modal cancel button listeners attached');
+            }
+        }
+        
+        console.log('=== iOS EVENT LISTENERS INITIALIZATION COMPLETE ===');
+    };
+    
+    // Try immediately
+    attachListeners();
+    
+    // Also try after a short delay in case DOM isn't fully ready
+    setTimeout(attachListeners, 500);
+    
+    // And try when DOM is definitely ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', attachListeners);
     }
 })();
 </script>
