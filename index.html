@@ -45,9 +45,23 @@ label { display:block; margin-bottom:6px; color:#333; font-weight:500; font-size
 input[type="text"], input[type="password"], input[type="number"], input[type="file"], input[type="date"] {
     width:100%; padding:10px 12px; border:2px solid #e0e0e0; border-radius:8px;
     font-size:15px; margin-bottom:16px; transition:border-color 0.2s;
+    -webkit-appearance: none; /* Remove iOS default styling */
+    appearance: none;
+    touch-action: manipulation; /* Enable fast taps */
+    -webkit-user-select: text; /* Allow text selection */
+    user-select: text;
 }
 input[type="text"]:focus, input[type="password"]:focus, input[type="number"]:focus, input[type="date"]:focus {
     outline:none; border-color:#667eea;
+}
+/* iOS-specific input fixes */
+input[type="number"] {
+    -moz-appearance: textfield; /* Firefox: remove spinner */
+}
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
 }
 input[type="file"] { padding:8px; }
 
@@ -5235,6 +5249,26 @@ function selectGameForProposePage(game) {
     console.log('Modal element:', modal);
     modal.style.display = 'block';
     console.log('Modal should now be visible');
+    
+    // iOS FIX: Ensure inputs are editable after modal is shown
+    setTimeout(() => {
+        const minInput = document.getElementById('proposed-min-players');
+        const maxInput = document.getElementById('proposed-max-players');
+        
+        if (minInput) {
+            minInput.removeAttribute('readonly');
+            minInput.removeAttribute('disabled');
+            minInput.focus();
+            minInput.blur();
+            console.log('Min input configured, readonly:', minInput.hasAttribute('readonly'));
+        }
+        
+        if (maxInput) {
+            maxInput.removeAttribute('readonly');
+            maxInput.removeAttribute('disabled');
+            console.log('Max input configured, readonly:', maxInput.hasAttribute('readonly'));
+        }
+    }, 100);
 }
 
 function proposeCustomGame() {
@@ -5357,6 +5391,22 @@ function proposeCustomGame() {
     });
     
     document.getElementById('configure-proposed-game-modal').style.display = 'block';
+    
+    // iOS FIX: Ensure inputs are editable after modal is shown
+    setTimeout(() => {
+        const minInput = document.getElementById('proposed-min-players');
+        const maxInput = document.getElementById('proposed-max-players');
+        
+        if (minInput) {
+            minInput.removeAttribute('readonly');
+            minInput.removeAttribute('disabled');
+        }
+        
+        if (maxInput) {
+            maxInput.removeAttribute('readonly');
+            maxInput.removeAttribute('disabled');
+        }
+    }, 100);
 }
 
 function cancelPropose() {
@@ -8437,6 +8487,57 @@ class DualRange {
         if (proposeAllPlayers) {
             proposeAllPlayers.addEventListener('change', applyProposeFilters);
             console.log('✓ All player counts checkbox listener attached');
+        }
+        
+        // Modal number inputs - make them work on iOS
+        const minPlayersInput = document.getElementById('proposed-min-players');
+        if (minPlayersInput) {
+            minPlayersInput.removeAttribute('readonly');
+            minPlayersInput.style.webkitUserSelect = 'text';
+            minPlayersInput.style.userSelect = 'text';
+            minPlayersInput.style.cursor = 'text';
+            // Try to force focus on tap
+            minPlayersInput.addEventListener('touchstart', function(e) {
+                e.stopPropagation();
+                this.focus();
+            });
+            minPlayersInput.addEventListener('click', function(e) {
+                e.stopPropagation();
+                this.focus();
+            });
+            console.log('✓ Min players input configured for iOS');
+        }
+        
+        const maxPlayersInput = document.getElementById('proposed-max-players');
+        if (maxPlayersInput) {
+            maxPlayersInput.removeAttribute('readonly');
+            maxPlayersInput.style.webkitUserSelect = 'text';
+            maxPlayersInput.style.userSelect = 'text';
+            maxPlayersInput.style.cursor = 'text';
+            // Try to force focus on tap
+            maxPlayersInput.addEventListener('touchstart', function(e) {
+                e.stopPropagation();
+                this.focus();
+            });
+            maxPlayersInput.addEventListener('click', function(e) {
+                e.stopPropagation();
+                this.focus();
+            });
+            console.log('✓ Max players input configured for iOS');
+        }
+        
+        // Search input - force it to be editable
+        const searchInput = document.getElementById('propose-search');
+        if (searchInput) {
+            searchInput.removeAttribute('readonly');
+            searchInput.style.webkitUserSelect = 'text';
+            searchInput.style.userSelect = 'text';
+            searchInput.style.cursor = 'text';
+            searchInput.addEventListener('touchstart', function(e) {
+                e.stopPropagation();
+                this.focus();
+            });
+            console.log('✓ Search input configured for iOS');
         }
         
         // Modal save button
