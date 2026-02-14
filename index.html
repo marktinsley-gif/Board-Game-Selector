@@ -56,6 +56,10 @@ button {
     background:#667eea; color:white; border:none; padding:10px 20px;
     border-radius:8px; font-size:15px; font-weight:600; cursor:pointer;
     transition:background 0.2s; margin-right:8px; margin-bottom:8px;
+    touch-action: manipulation; /* Enable fast taps on iOS */
+    -webkit-tap-highlight-color: rgba(0,0,0,0.1); /* iOS tap highlight */
+    user-select: none; /* Prevent text selection on long press */
+    -webkit-user-select: none;
 }
 button:hover { background:#5568d3; }
 button:disabled { background:#ccc; cursor:not-allowed; }
@@ -117,6 +121,7 @@ button.ghost:hover { background:#667eea; color:white; }
     background:#f8f9fa; border-radius:8px; padding:12px 14px;
     margin-bottom:8px; display:flex; gap:12px; align-items:center;
     transition:background 0.2s;
+    touch-action: manipulation; /* Enable fast taps on iOS */
 }
 .game-item:hover { background:#eef0f3; }
 .game-item.promoted { background:#d1e7dd; border:2px solid #0f5132; }
@@ -5080,15 +5085,23 @@ function applyProposeFilters() {
         const button = document.createElement('button');
         button.className = 'success';
         button.style.whiteSpace = 'nowrap';
+        button.style.cursor = 'pointer';
+        button.style.webkitTapHighlightColor = 'rgba(0,0,0,0.1)';
+        button.style.minHeight = '44px'; // iOS minimum touch target
+        button.style.minWidth = '44px';
         button.textContent = 'Propose This Game';
         
-        // Attach click listener DIRECTLY to the button element
-        button.addEventListener('click', function(e) {
+        // Handler function
+        const handleClick = function(e) {
             console.log('=== BUTTON CLICKED! Index:', index);
             e.preventDefault();
             e.stopPropagation();
             selectGameForProposeByIndex(index);
-        });
+        };
+        
+        // Attach BOTH click and touchend for iOS compatibility
+        button.addEventListener('click', handleClick);
+        button.addEventListener('touchend', handleClick);
         
         actionsDiv.appendChild(button);
         container.appendChild(div);
