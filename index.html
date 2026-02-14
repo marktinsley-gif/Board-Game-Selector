@@ -721,7 +721,7 @@ button.ghost:hover { background:#667eea; color:white; }
       <h3>Proposed Games and Votes</h3>
       <p style="font-size:14px; color:#555; margin-bottom:12px; line-height:1.5;">Propose games to play or create votes using games attendees are bringing. You can browse the list of proposed games below. Joining a proposed game will help to get it scheduled.</p>
       <div style="display:flex; gap:8px; margin-bottom:16px;">
-        <button class="success" onclick="showProposeGameModal()">+ Propose a Game</button>
+        <button class="success" onclick="openProposePage()">+ Propose a Game</button>
         <button class="success" onclick="startNewEventVote()">+ Start a New Vote</button>
       </div>
       <div id="proposed-games-list"></div>
@@ -920,6 +920,99 @@ button.ghost:hover { background:#667eea; color:white; }
     
     <button onclick="saveMyEventGames()">Save Selection</button>
     <button class="secondary" onclick="goBackToEventCollection()">Cancel</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     PAGE: PROPOSE GAME
+     ════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-propose-game">
+  <div class="card">
+    <div class="topbar">
+      <span id="propose-game-icon" class="logo" onclick="goToGroupOrHome()">🎲</span>
+      <button class="secondary" onclick="doLogout()">Log Out</button>
+    </div>
+    
+    <h2>Propose a Game</h2>
+    <p class="subtitle">Select a game from the event collection to propose</p>
+    
+    <!-- Search Bar -->
+    <input type="text" id="propose-search" placeholder="🔍 Search games..." style="margin-bottom:16px;">
+    
+    <!-- Filter Section -->
+    <div style="margin-bottom:16px;">
+      <button id="propose-filter-toggle" class="secondary" onclick="toggleProposeFilters()" style="width:100%;">Show Filters</button>
+    </div>
+    
+    <div id="propose-filters-panel" style="display:none; padding:16px; background:#f8f9fa; border-radius:8px; margin-bottom:16px;">
+      <!-- Sort -->
+      <label for="propose-sort">Sort By</label>
+      <select id="propose-sort" style="width:100%; padding:10px; border:2px solid #e0e0e0; border-radius:8px; margin-bottom:16px;">
+        <option value="alpha">Alphabetical</option>
+        <option value="rating">Rating (High to Low)</option>
+        <option value="rank">BGG Rank (Best to Worst)</option>
+        <option value="complexity-high">Complexity (High to Low)</option>
+        <option value="complexity-low">Complexity (Low to High)</option>
+        <option value="length-short">Length (Short to Long)</option>
+        <option value="length-long">Length (Long to Short)</option>
+        <option value="random">Random</option>
+      </select>
+      
+      <!-- Player Count -->
+      <label>Player Count</label>
+      <div id="propose-dr-players" class="dual-range">
+        <div class="dual-range-track"></div>
+        <div class="dual-range-selected"></div>
+        <div class="dual-range-thumb dual-range-thumb-min"></div>
+        <div class="dual-range-thumb dual-range-thumb-max"></div>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <span id="propose-player-range-label" style="font-size:13px; color:#666;">1 – 20</span>
+        <div class="checkbox-row" style="margin:0;">
+          <input type="checkbox" id="propose-filter-all-player-counts">
+          <label for="propose-filter-all-player-counts" style="margin:0; font-size:13px;">All vs Any</label>
+        </div>
+      </div>
+      
+      <!-- Complexity -->
+      <label>Complexity</label>
+      <div id="propose-dr-complexity" class="dual-range">
+        <div class="dual-range-track"></div>
+        <div class="dual-range-selected"></div>
+        <div class="dual-range-thumb dual-range-thumb-min"></div>
+        <div class="dual-range-thumb dual-range-thumb-max"></div>
+      </div>
+      <div id="propose-complexity-label" style="font-size:13px; color:#666; margin-bottom:16px;">1.0 – 5.0</div>
+      
+      <!-- Rating -->
+      <label>Rating</label>
+      <div id="propose-dr-rating" class="dual-range">
+        <div class="dual-range-track"></div>
+        <div class="dual-range-selected"></div>
+        <div class="dual-range-thumb dual-range-thumb-min"></div>
+        <div class="dual-range-thumb dual-range-thumb-max"></div>
+      </div>
+      <div id="propose-rating-label" style="font-size:13px; color:#666; margin-bottom:16px;">1.0 – 10.0</div>
+      
+      <!-- Exclude Expansions -->
+      <div class="checkbox-row">
+        <input type="checkbox" id="propose-no-expansions">
+        <label for="propose-no-expansions">Exclude Expansions</label>
+      </div>
+      
+      <button onclick="applyProposeFilters()" style="width:100%; margin-top:12px;">Apply Filters</button>
+    </div>
+    
+    <!-- Game Count -->
+    <div id="propose-game-count" style="font-size:13px; color:#666; margin-bottom:12px;"></div>
+    
+    <!-- Games List -->
+    <div id="propose-games-list" style="max-height:400px; overflow-y:auto; margin-bottom:16px;"></div>
+    
+    <!-- Custom Game Button -->
+    <button class="secondary" onclick="proposeCustomGame()" style="width:100%; margin-bottom:8px;">📝 Propose Game Not in Collection</button>
+    
+    <button class="secondary" onclick="cancelPropose()">Cancel</button>
   </div>
 </div>
 
@@ -4758,6 +4851,336 @@ function hideProposeGameModal() {
     proposeGameCache = null; // Clear cache when closing
 }
 
+// ════════════════════════════════════════════════════════════════════
+// PROPOSE GAME PAGE (NEW - REPLACES MODAL)
+// ════════════════════════════════════════════════════════════════════
+
+let proposePageSliders = null;
+let proposePageCache = null;
+
+async function openProposePage() {
+    selectedGameForProposal = null;
+    
+    // Initialize sliders if not already done
+    if (!proposePageSliders) {
+        // Need to wait for page to be visible first
+        goToPage('page-propose-game');
+        
+        setTimeout(() => {
+            proposePageSliders = {
+                playerCount: new DualRange('propose-dr-players', { 
+                    min:1, max:20, step:1, minVal:1, maxVal:20, 
+                    labelEl:'propose-player-range-label', 
+                    fmt: (a,b) => a + ' – ' + b,
+                    onChange: () => applyProposeFilters()
+                }),
+                complexity: new DualRange('propose-dr-complexity', { 
+                    min:1, max:5, step:0.1, minVal:1, maxVal:5, 
+                    labelEl:'propose-complexity-label', 
+                    fmt: (a,b) => a.toFixed(1) + ' – ' + b.toFixed(1),
+                    onChange: () => applyProposeFilters()
+                }),
+                rating: new DualRange('propose-dr-rating', { 
+                    min:1, max:10, step:0.1, minVal:1, maxVal:10, 
+                    labelEl:'propose-rating-label', 
+                    fmt: (a,b) => a.toFixed(1) + ' – ' + b.toFixed(1),
+                    onChange: () => applyProposeFilters()
+                })
+            };
+            
+            // Now load games
+            loadProposePageGames();
+        }, 100);
+    } else {
+        goToPage('page-propose-game');
+        loadProposePageGames();
+    }
+    
+    // Reset filters
+    document.getElementById('propose-search').value = '';
+    document.getElementById('propose-no-expansions').checked = true;
+    document.getElementById('propose-sort').value = 'alpha';
+    document.getElementById('propose-filter-all-player-counts').checked = false;
+    
+    if (proposePageSliders) {
+        proposePageSliders.playerCount.setValues(1, 20);
+        proposePageSliders.complexity.setValues(1, 5);
+        proposePageSliders.rating.setValues(1, 10);
+    }
+}
+
+async function loadProposePageGames() {
+    const container = document.getElementById('propose-games-list');
+    container.innerHTML = '<p style="color:#666; padding:16px; text-align:center;">Loading games...</p>';
+    
+    // Get all unique games from event collection
+    const allEventGames = [];
+    const seenIds = new Set();
+    const attendeeGames = currentEvent.attendeeGames || {};
+    
+    for (const username of Object.keys(attendeeGames)) {
+        const user = await fsGetUser(username);
+        const gameIds = attendeeGames[username] || [];
+        
+        for (const gameId of gameIds) {
+            if (!seenIds.has(gameId)) {
+                seenIds.add(gameId);
+                const game = (user.games || []).find(g => g.id === gameId);
+                if (game) {
+                    allEventGames.push(game);
+                }
+            }
+        }
+    }
+    
+    proposePageCache = allEventGames;
+    applyProposeFilters();
+}
+
+function toggleProposeFilters() {
+    const panel = document.getElementById('propose-filters-panel');
+    const button = document.getElementById('propose-filter-toggle');
+    const isHidden = panel.style.display === 'none';
+    panel.style.display = isHidden ? 'block' : 'none';
+    button.textContent = isHidden ? 'Hide Filters' : 'Show Filters';
+}
+
+function applyProposeFilters() {
+    if (!proposePageCache || !proposePageSliders) return;
+    
+    const container = document.getElementById('propose-games-list');
+    const searchTerm = document.getElementById('propose-search').value.toLowerCase();
+    const noExp = document.getElementById('propose-no-expansions').checked;
+    const sortBy = document.getElementById('propose-sort').value;
+    const allPlayerCounts = document.getElementById('propose-filter-all-player-counts').checked;
+    
+    const playerMin = proposePageSliders.playerCount.getMin();
+    const playerMax = proposePageSliders.playerCount.getMax();
+    const cMin = proposePageSliders.complexity.getMin();
+    const cMax = proposePageSliders.complexity.getMax();
+    const rMin = proposePageSliders.rating.getMin();
+    const rMax = proposePageSliders.rating.getMax();
+    
+    // Filter games
+    let filtered = proposePageCache.filter(g => {
+        // Search filter
+        if (searchTerm && !g.name.toLowerCase().includes(searchTerm)) {
+            return false;
+        }
+        
+        // Expansion filter
+        if (noExp && (g.itemType === 'expansion' || g.itemType === 'boardgameexpansion')) {
+            return false;
+        }
+        
+        // Player count filter
+        if (allPlayerCounts) {
+            if (g.minPlayers > playerMax || g.maxPlayers < playerMin) {
+                return false;
+            }
+        } else {
+            if (g.minPlayers < playerMin || g.minPlayers > playerMax) {
+                return false;
+            }
+        }
+        
+        // Complexity filter
+        if (g.complexity && (g.complexity < cMin || g.complexity > cMax)) {
+            return false;
+        }
+        
+        // Rating filter
+        if (g.rating && (g.rating < rMin || g.rating > rMax)) {
+            return false;
+        }
+        
+        return true;
+    });
+    
+    // Sort games
+    if (sortBy === 'alpha') {
+        filtered.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (sortBy === 'rating') {
+        filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    } else if (sortBy === 'rank') {
+        filtered.sort((a, b) => (a.rank || 999999) - (b.rank || 999999));
+    } else if (sortBy === 'complexity-high') {
+        filtered.sort((a, b) => (b.complexity || 0) - (a.complexity || 0));
+    } else if (sortBy === 'complexity-low') {
+        filtered.sort((a, b) => (a.complexity || 0) - (b.complexity || 0));
+    } else if (sortBy === 'length-short') {
+        filtered.sort((a, b) => (a.playingTime || 0) - (b.playingTime || 0));
+    } else if (sortBy === 'length-long') {
+        filtered.sort((a, b) => (b.playingTime || 0) - (a.playingTime || 0));
+    } else if (sortBy === 'random') {
+        filtered.sort(() => Math.random() - 0.5);
+    }
+    
+    // Update count
+    document.getElementById('propose-game-count').textContent = `${filtered.length} game${filtered.length !== 1 ? 's' : ''}`;
+    
+    // Render games
+    container.innerHTML = '';
+    
+    if (filtered.length === 0) {
+        container.innerHTML = '<p style="color:#666; padding:16px; text-align:center;">No games match your filters</p>';
+        return;
+    }
+    
+    filtered.forEach(game => {
+        const isExpansion = game.itemType === 'expansion' || game.itemType === 'boardgameexpansion';
+        
+        const div = document.createElement('div');
+        div.className = 'list-item';
+        div.style.cursor = 'pointer';
+        div.onclick = () => selectGameForProposePage(game);
+        
+        if (isExpansion) {
+            div.style.opacity = '0.7';
+        }
+        
+        const expansionBadge = isExpansion ? ' <span style="background:#999; color:white; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:600;">EXP</span>' : '';
+        
+        div.innerHTML = `
+            <div class="list-item-left">
+                <div class="item-title">${game.name}${expansionBadge}</div>
+                <div class="item-sub">
+                    ${game.minPlayers}-${game.maxPlayers} players
+                    ${game.rating ? ` • ⭐ ${game.rating.toFixed(1)}` : ''}
+                    ${game.complexity ? ` • ⚙️ ${game.complexity.toFixed(1)}` : ''}
+                </div>
+            </div>
+        `;
+        
+        container.appendChild(div);
+    });
+}
+
+function selectGameForProposePage(game) {
+    selectedGameForProposal = game;
+    
+    // Show configuration modal
+    document.getElementById('configure-game-title').textContent = `Propose: ${game.name}`;
+    document.getElementById('proposed-min-players').value = game.minPlayers;
+    document.getElementById('proposed-max-players').value = game.maxPlayers;
+    
+    // Render participant checkboxes
+    const container = document.getElementById('proposed-game-participants');
+    container.innerHTML = '';
+    
+    // Get all attendees
+    const attendees = currentEvent.attendees || [];
+    const plusOnes = currentEvent.plusOnes || [];
+    const attendeeStatuses = currentEvent.attendeeStatuses || {};
+    
+    // Filter out those who have left
+    const availableAttendees = attendees.filter(username => {
+        const status = attendeeStatuses[username];
+        return status !== 'left';
+    });
+    
+    const availablePlusOnes = plusOnes.filter(po => {
+        const status = attendeeStatuses[po.id];
+        return status !== 'left';
+    });
+    
+    // Add attendees
+    availableAttendees.forEach(username => {
+        const label = document.createElement('label');
+        label.className = 'participant-checkbox';
+        label.innerHTML = `
+            <input type="checkbox" value="${username}" ${username === session.username ? 'checked' : ''}>
+            <span>${username}</span>
+        `;
+        container.appendChild(label);
+    });
+    
+    // Add plus ones
+    availablePlusOnes.forEach(po => {
+        const plusOneNum = getPlusOneNumber(po);
+        const label = document.createElement('label');
+        label.className = 'participant-checkbox';
+        label.innerHTML = `
+            <input type="checkbox" value="${po.id}">
+            <span>${po.name} (+${plusOneNum})</span>
+        `;
+        container.appendChild(label);
+    });
+    
+    document.getElementById('configure-propose-modal').style.display = 'block';
+}
+
+function proposeCustomGame() {
+    const gameName = prompt('Enter the name of the game:');
+    if (!gameName) return;
+    
+    const minPlayers = parseInt(prompt('Minimum players:', '2'));
+    if (!minPlayers || minPlayers < 1) return;
+    
+    const maxPlayers = parseInt(prompt('Maximum players:', minPlayers.toString()));
+    if (!maxPlayers || maxPlayers < minPlayers) return;
+    
+    selectedGameForProposal = {
+        id: 'custom_' + Date.now(),
+        name: gameName,
+        minPlayers: minPlayers,
+        maxPlayers: maxPlayers,
+        itemType: 'custom'
+    };
+    
+    // Show configuration modal
+    document.getElementById('configure-game-title').textContent = `Propose: ${gameName}`;
+    document.getElementById('proposed-min-players').value = minPlayers;
+    document.getElementById('proposed-max-players').value = maxPlayers;
+    
+    // Render participant checkboxes (same as above)
+    const container = document.getElementById('proposed-game-participants');
+    container.innerHTML = '';
+    
+    const attendees = currentEvent.attendees || [];
+    const plusOnes = currentEvent.plusOnes || [];
+    const attendeeStatuses = currentEvent.attendeeStatuses || {};
+    
+    const availableAttendees = attendees.filter(username => {
+        const status = attendeeStatuses[username];
+        return status !== 'left';
+    });
+    
+    const availablePlusOnes = plusOnes.filter(po => {
+        const status = attendeeStatuses[po.id];
+        return status !== 'left';
+    });
+    
+    availableAttendees.forEach(username => {
+        const label = document.createElement('label');
+        label.className = 'participant-checkbox';
+        label.innerHTML = `
+            <input type="checkbox" value="${username}" ${username === session.username ? 'checked' : ''}>
+            <span>${username}</span>
+        `;
+        container.appendChild(label);
+    });
+    
+    availablePlusOnes.forEach(po => {
+        const plusOneNum = getPlusOneNumber(po);
+        const label = document.createElement('label');
+        label.className = 'participant-checkbox';
+        label.innerHTML = `
+            <input type="checkbox" value="${po.id}">
+            <span>${po.name} (+${plusOneNum})</span>
+        `;
+        container.appendChild(label);
+    });
+    
+    document.getElementById('configure-propose-modal').style.display = 'block';
+}
+
+function cancelPropose() {
+    proposePageCache = null;
+    openEvent(currentEvent.id);
+}
+
+// Keep existing modal function for backward compatibility
 async function selectGameForProposal(game) {
     selectedGameForProposal = game;
     hideProposeGameModal();
@@ -7719,6 +8142,32 @@ class DualRange {
     }
     bindTab('tab-login', 'login');
     bindTab('tab-register', 'register');
+
+    // Propose page search listener
+    const proposeSearch = document.getElementById('propose-search');
+    if (proposeSearch) {
+        proposeSearch.addEventListener('input', function() {
+            if (proposePageCache) {
+                applyProposeFilters();
+            }
+        });
+    }
+    
+    // Propose page filter listeners
+    const proposeSort = document.getElementById('propose-sort');
+    if (proposeSort) {
+        proposeSort.addEventListener('change', applyProposeFilters);
+    }
+    
+    const proposeNoExp = document.getElementById('propose-no-expansions');
+    if (proposeNoExp) {
+        proposeNoExp.addEventListener('change', applyProposeFilters);
+    }
+    
+    const proposeAllPlayers = document.getElementById('propose-filter-all-player-counts');
+    if (proposeAllPlayers) {
+        proposeAllPlayers.addEventListener('change', applyProposeFilters);
+    }
 
     // Handle browser back/forward buttons
     window.addEventListener('popstate', function(event) {
