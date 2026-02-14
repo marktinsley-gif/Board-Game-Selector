@@ -5052,6 +5052,8 @@ function applyProposeFilters() {
         
         const div = document.createElement('div');
         div.className = 'list-item';
+        div.style.cursor = 'pointer';
+        div.setAttribute('onclick', `selectGameForProposeByIndex(${index})`);
         
         if (isExpansion) {
             div.style.opacity = '0.7';
@@ -5060,7 +5062,7 @@ function applyProposeFilters() {
         const expansionBadge = isExpansion ? ' <span style="background:#999; color:white; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:600;">EXP</span>' : '';
         
         div.innerHTML = `
-            <div class="list-item-left" onclick="selectGameForProposeByIndex(${index})" style="cursor:pointer; flex:1;">
+            <div class="list-item-left">
                 <div class="item-title">${game.name}${expansionBadge}</div>
                 <div class="item-sub">
                     ${game.minPlayers}-${game.maxPlayers} players
