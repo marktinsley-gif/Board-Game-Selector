@@ -5192,13 +5192,15 @@ function selectGameForProposePage(game) {
         
         // Make label click work on iOS
         label.addEventListener('click', function(e) {
-            if (e.target === label) {
+            // Don't check e.target - just toggle if not clicking checkbox directly
+            if (e.target !== checkbox) {
                 checkbox.checked = !checkbox.checked;
             }
         });
         label.addEventListener('touchend', function(e) {
-            if (e.target === label) {
-                e.preventDefault();
+            e.preventDefault();
+            // Don't check e.target - just toggle if not clicking checkbox directly
+            if (e.target !== checkbox) {
                 checkbox.checked = !checkbox.checked;
             }
         });
@@ -5231,13 +5233,15 @@ function selectGameForProposePage(game) {
         
         // Make label click work on iOS
         label.addEventListener('click', function(e) {
-            if (e.target === label) {
+            // Don't check e.target - just toggle if not clicking checkbox directly
+            if (e.target !== checkbox) {
                 checkbox.checked = !checkbox.checked;
             }
         });
         label.addEventListener('touchend', function(e) {
-            if (e.target === label) {
-                e.preventDefault();
+            e.preventDefault();
+            // Don't check e.target - just toggle if not clicking checkbox directly
+            if (e.target !== checkbox) {
                 checkbox.checked = !checkbox.checked;
             }
         });
@@ -5338,13 +5342,15 @@ function proposeCustomGame() {
         
         // Make label click work on iOS
         label.addEventListener('click', function(e) {
-            if (e.target === label) {
+            // Don't check e.target - just toggle if not clicking checkbox directly
+            if (e.target !== checkbox) {
                 checkbox.checked = !checkbox.checked;
             }
         });
         label.addEventListener('touchend', function(e) {
-            if (e.target === label) {
-                e.preventDefault();
+            e.preventDefault();
+            // Don't check e.target - just toggle if not clicking checkbox directly
+            if (e.target !== checkbox) {
                 checkbox.checked = !checkbox.checked;
             }
         });
@@ -5376,13 +5382,15 @@ function proposeCustomGame() {
         
         // Make label click work on iOS
         label.addEventListener('click', function(e) {
-            if (e.target === label) {
+            // Don't check e.target - just toggle if not clicking checkbox directly
+            if (e.target !== checkbox) {
                 checkbox.checked = !checkbox.checked;
             }
         });
         label.addEventListener('touchend', function(e) {
-            if (e.target === label) {
-                e.preventDefault();
+            e.preventDefault();
+            // Don't check e.target - just toggle if not clicking checkbox directly
+            if (e.target !== checkbox) {
                 checkbox.checked = !checkbox.checked;
             }
         });
@@ -5556,8 +5564,10 @@ async function saveProposedGame() {
             showLoading(false);
             hideConfigureProposeModal();
             
-            // Navigate back to event page
-            openEvent(currentEvent.id);
+            // Navigate back to event page (with small delay for iOS)
+            setTimeout(() => {
+                openEvent(currentEvent.id);
+            }, 100);
             return;
         }
     }
@@ -5583,8 +5593,10 @@ async function saveProposedGame() {
     showLoading(false);
     hideConfigureProposeModal();
     
-    // Navigate back to event page
-    openEvent(currentEvent.id);
+    // Navigate back to event page (with small delay for iOS)
+    setTimeout(() => {
+        openEvent(currentEvent.id);
+    }, 100);
 }
 
 async function joinProposedGame(proposedId) {
