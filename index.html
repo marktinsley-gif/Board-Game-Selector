@@ -5544,6 +5544,7 @@ async function saveProposedGame() {
     
     if (!minPlayers || !maxPlayers || minPlayers > maxPlayers) {
         alert('Please enter valid player counts (min ≤ max)');
+        isSavingProposal = false;
         return;
     }
     
@@ -5604,6 +5605,11 @@ async function saveProposedGame() {
             setTimeout(() => {
                 openEvent(currentEvent.id);
             }, 100);
+            return;
+        } else {
+            // User clicked Cancel - reset flag and stop
+            isSavingProposal = false;
+            showLoading(false);
             return;
         }
     }
