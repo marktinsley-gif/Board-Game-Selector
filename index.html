@@ -5139,6 +5139,10 @@ function selectGameForProposePage(game) {
     console.log('selectGameForProposePage called with game:', game.name);
     selectedGameForProposal = game;
     
+    // Reset saving flag in case it got stuck
+    isSavingProposal = false;
+    console.log('Reset isSavingProposal flag');
+    
     // Show configuration modal
     document.getElementById('configure-game-title').textContent = `Propose: ${game.name}`;
     document.getElementById('proposed-min-players').value = game.minPlayers;
@@ -5297,6 +5301,9 @@ function proposeCustomGame() {
     
     const maxPlayers = parseInt(prompt('Maximum players:', minPlayers.toString()));
     if (!maxPlayers || maxPlayers < minPlayers) return;
+    
+    // Reset saving flag in case it got stuck
+    isSavingProposal = false;
     
     selectedGameForProposal = {
         id: 'custom_' + Date.now(),
@@ -5523,13 +5530,19 @@ async function selectGameForProposal(game) {
 }
 
 function hideConfigureProposeModal() {
+    console.log('=== hideConfigureProposeModal called ===');
     document.getElementById('configure-proposed-game-modal').style.display = 'none';
-    window.isSavingProposal = false; // Reset flag when modal closes
+    isSavingProposal = false; // Reset flag when modal closes
+    console.log('Reset isSavingProposal = false');
 }
 
 let isSavingProposal = false;
 
 async function saveProposedGame() {
+    console.log('=== saveProposedGame called ===');
+    console.log('selectedGameForProposal:', selectedGameForProposal);
+    console.log('isSavingProposal flag:', isSavingProposal);
+    
     if (!selectedGameForProposal) return;
     
     // Prevent duplicate submissions
@@ -5538,6 +5551,7 @@ async function saveProposedGame() {
         return;
     }
     isSavingProposal = true;
+    console.log('Set isSavingProposal = true');
     
     const minPlayers = parseInt(document.getElementById('proposed-min-players').value);
     const maxPlayers = parseInt(document.getElementById('proposed-max-players').value);
