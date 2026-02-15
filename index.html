@@ -1407,6 +1407,7 @@ button.ghost:hover { background:#667eea; color:white; }
     
     <div style="margin:16px 0;">
       <label style="display:block; font-weight:600; margin-bottom:8px;">Player Count</label>
+      <p style="font-size:13px; color:#666; margin-bottom:12px; line-height:1.4;">Set the minimum and maximum number of players you're willing to play with. Once the minimum is reached, the game will be confirmed as scheduled.</p>
       <div style="display:flex; gap:16px; align-items:center;">
         <div style="flex:1;">
           <label style="font-size:13px; color:#666;">Minimum Players</label>
@@ -5190,20 +5191,26 @@ function selectGameForProposePage(game) {
         label.appendChild(checkbox);
         label.appendChild(span);
         
-        // Make label click work on iOS
+        // Make label click work on both iOS and Android
         label.addEventListener('click', function(e) {
-            // Don't check e.target - just toggle if not clicking checkbox directly
-            if (e.target !== checkbox) {
-                checkbox.checked = !checkbox.checked;
+            // If clicking the checkbox itself, let default behavior handle it
+            if (e.target === checkbox) {
+                return;
             }
+            // Otherwise, toggle the checkbox
+            checkbox.checked = !checkbox.checked;
         });
-        label.addEventListener('touchend', function(e) {
-            e.preventDefault();
-            // Don't check e.target - just toggle if not clicking checkbox directly
-            if (e.target !== checkbox) {
-                checkbox.checked = !checkbox.checked;
-            }
-        });
+        
+        // iOS-specific: use touchend only on iOS devices
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        if (isIOS) {
+            label.addEventListener('touchend', function(e) {
+                if (e.target !== checkbox) {
+                    e.preventDefault();
+                    checkbox.checked = !checkbox.checked;
+                }
+            });
+        }
         
         container.appendChild(label);
     });
@@ -5231,20 +5238,26 @@ function selectGameForProposePage(game) {
         label.appendChild(checkbox);
         label.appendChild(span);
         
-        // Make label click work on iOS
+        // Make label click work on both iOS and Android
         label.addEventListener('click', function(e) {
-            // Don't check e.target - just toggle if not clicking checkbox directly
-            if (e.target !== checkbox) {
-                checkbox.checked = !checkbox.checked;
+            // If clicking the checkbox itself, let default behavior handle it
+            if (e.target === checkbox) {
+                return;
             }
+            // Otherwise, toggle the checkbox
+            checkbox.checked = !checkbox.checked;
         });
-        label.addEventListener('touchend', function(e) {
-            e.preventDefault();
-            // Don't check e.target - just toggle if not clicking checkbox directly
-            if (e.target !== checkbox) {
-                checkbox.checked = !checkbox.checked;
-            }
-        });
+        
+        // iOS-specific: use touchend only on iOS devices
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        if (isIOS) {
+            label.addEventListener('touchend', function(e) {
+                if (e.target !== checkbox) {
+                    e.preventDefault();
+                    checkbox.checked = !checkbox.checked;
+                }
+            });
+        }
         
         container.appendChild(label);
     });
@@ -5340,20 +5353,26 @@ function proposeCustomGame() {
         label.appendChild(checkbox);
         label.appendChild(span);
         
-        // Make label click work on iOS
+        // Make label click work on both iOS and Android
         label.addEventListener('click', function(e) {
-            // Don't check e.target - just toggle if not clicking checkbox directly
-            if (e.target !== checkbox) {
-                checkbox.checked = !checkbox.checked;
+            // If clicking the checkbox itself, let default behavior handle it
+            if (e.target === checkbox) {
+                return;
             }
+            // Otherwise, toggle the checkbox
+            checkbox.checked = !checkbox.checked;
         });
-        label.addEventListener('touchend', function(e) {
-            e.preventDefault();
-            // Don't check e.target - just toggle if not clicking checkbox directly
-            if (e.target !== checkbox) {
-                checkbox.checked = !checkbox.checked;
-            }
-        });
+        
+        // iOS-specific: use touchend only on iOS devices
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        if (isIOS) {
+            label.addEventListener('touchend', function(e) {
+                if (e.target !== checkbox) {
+                    e.preventDefault();
+                    checkbox.checked = !checkbox.checked;
+                }
+            });
+        }
         
         container.appendChild(label);
     });
@@ -5380,20 +5399,26 @@ function proposeCustomGame() {
         label.appendChild(checkbox);
         label.appendChild(span);
         
-        // Make label click work on iOS
+        // Make label click work on both iOS and Android
         label.addEventListener('click', function(e) {
-            // Don't check e.target - just toggle if not clicking checkbox directly
-            if (e.target !== checkbox) {
-                checkbox.checked = !checkbox.checked;
+            // If clicking the checkbox itself, let default behavior handle it
+            if (e.target === checkbox) {
+                return;
             }
+            // Otherwise, toggle the checkbox
+            checkbox.checked = !checkbox.checked;
         });
-        label.addEventListener('touchend', function(e) {
-            e.preventDefault();
-            // Don't check e.target - just toggle if not clicking checkbox directly
-            if (e.target !== checkbox) {
-                checkbox.checked = !checkbox.checked;
-            }
-        });
+        
+        // iOS-specific: use touchend only on iOS devices
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        if (isIOS) {
+            label.addEventListener('touchend', function(e) {
+                if (e.target !== checkbox) {
+                    e.preventDefault();
+                    checkbox.checked = !checkbox.checked;
+                }
+            });
+        }
         
         container.appendChild(label);
     });
@@ -5499,10 +5524,20 @@ async function selectGameForProposal(game) {
 
 function hideConfigureProposeModal() {
     document.getElementById('configure-proposed-game-modal').style.display = 'none';
+    window.isSavingProposal = false; // Reset flag when modal closes
 }
+
+let isSavingProposal = false;
 
 async function saveProposedGame() {
     if (!selectedGameForProposal) return;
+    
+    // Prevent duplicate submissions
+    if (isSavingProposal) {
+        console.log('Already saving, ignoring duplicate click');
+        return;
+    }
+    isSavingProposal = true;
     
     const minPlayers = parseInt(document.getElementById('proposed-min-players').value);
     const maxPlayers = parseInt(document.getElementById('proposed-max-players').value);
@@ -5531,18 +5566,19 @@ async function saveProposedGame() {
         }
     });
     
-    showLoading(true);
-    
     // Check if we already have enough players to schedule
     if (selectedPlayers.length >= minPlayers) {
-        const spotsOpen = maxPlayers - minPlayers;
+        const spotsOpen = maxPlayers - selectedPlayers.length;
         const shouldSchedule = confirm(
-            `You already have ${selectedPlayers.length} players (minimum: ${minPlayers})!\n\n` +
-            `Would you like to schedule this game now instead of proposing it?` +
-            (spotsOpen > 0 ? `\n\nThe game will be open to ${spotsOpen} additional player${spotsOpen !== 1 ? 's' : ''}.` : '\n\nThe game will be closed to additional players.')
+            `You have selected ${selectedPlayers.length} players, which meets your minimum of ${minPlayers}.\n\n` +
+            `Would you like to SCHEDULE this game now?\n\n` +
+            `Scheduled means the game is confirmed to run.` +
+            (spotsOpen > 0 ? `\n\nThe game will remain open for ${spotsOpen} additional player${spotsOpen !== 1 ? 's' : ''}.` : '\n\nThe game will be closed to additional players.')
         );
         
         if (shouldSchedule) {
+            showLoading(true);
+            
             // Create scheduled game instead
             if (!currentEvent.scheduledGames) {
                 currentEvent.scheduledGames = {};
@@ -5571,6 +5607,8 @@ async function saveProposedGame() {
             return;
         }
     }
+    
+    showLoading(true);
     
     // Create proposed game
     if (!currentEvent.proposedGames) {
